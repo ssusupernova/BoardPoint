@@ -4,4 +4,5 @@ export const routes = {
   forgotPassword: '/forgot-password',
   home: '/home',
   preferences: '/renter/preferences',
+  landlordListSpace: '/landlord/list-space',
 } as const;

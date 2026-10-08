@@ -47,6 +47,8 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/sign-up" />
       </Stack.Protected>
+
+      <Stack.Screen name="landlord/list-space" />
     </Stack>
   );
 }
