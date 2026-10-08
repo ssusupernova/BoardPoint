@@ -1,7 +1,7 @@
-import { Stack } from 'expo-router';
 import { useAuthSession } from '@/services/auth';
-import { SplashScreenController } from '@/splash';
-import { colors } from '@/theme';
+import { Stack } from 'expo-router';
+import { SplashScreenController } from '../splash';
+import { colors } from '../theme';
 
 export default function RootLayout() {
   return (
@@ -28,6 +28,7 @@ function RootNavigator() {
 
       <Stack.Protected guard={!session}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)/choose-role" />
         <Stack.Screen name="(auth)/sign-up" />
       </Stack.Protected>
 

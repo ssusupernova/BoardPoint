@@ -104,7 +104,7 @@ export default function LoginScreen() {
   };
 
   const handleSignUp = () => {
-    router.push(routes.signUp);
+    router.push(routes.chooseRole);
   };
 
   return (

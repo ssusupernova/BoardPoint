@@ -1,7 +1,10 @@
+import type { Href } from 'expo-router';
+
 export const routes = {
-  signIn: '/',
-  signUp: '/sign-up',
-  forgotPassword: '/forgot-password',
-  home: '/home',
-  landlordListSpace: '/landlord/list-space',
+  signIn: '/' as Href,
+  chooseRole: '/choose-role' as Href,
+  signUp: '/sign-up' as Href,
+  forgotPassword: '/forgot-password' as Href,
+  home: '/home' as Href,
+  landlordListSpace: '/landlord/list-space' as Href,
 } as const;

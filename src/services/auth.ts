@@ -41,6 +41,7 @@ export interface AuthSession {
     fullName: string;
     email: string;
     username: string;
+    role?: 'renter' | 'landlord';
   };
 }
 
@@ -49,6 +50,7 @@ export interface SignUpCredentials {
   /** Email address used to create the account. */
   email: string;
   password: string;
+  role?: 'renter' | 'landlord';
 }
 
 export interface AuthState {
@@ -76,6 +78,7 @@ interface StoredAccount {
   salt: string;
   passwordHash: string;
   createdAt: string;
+  role?: 'renter' | 'landlord';
 }
 
 type AccountIndexEntry = Pick<StoredAccount, 'id' | 'email' | 'username'>;
@@ -191,6 +194,7 @@ function toSession(account: StoredAccount): AuthSession {
       fullName: account.fullName,
       email: account.email,
       username: account.username,
+      role: account.role ?? 'renter',
     },
   };
 }
@@ -246,7 +250,7 @@ export const authService: AuthService = {
     throw new AuthNotConfiguredError('Google sign-in');
   },
 
-  async signUp({ fullName, email, password }) {
+  async signUp({ fullName, email, password, role }) {
     const name = fullName.trim();
     const mail = email.trim().toLowerCase();
     if (!name) throw new Error('Please enter your full name.');
@@ -269,6 +273,7 @@ export const authService: AuthService = {
       salt,
       passwordHash: await hashPassword(password, salt),
       createdAt: new Date().toISOString(),
+      role: role ?? 'renter',
     };
     await saveAccount(account);
 

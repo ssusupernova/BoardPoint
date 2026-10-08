@@ -1,12 +1,16 @@
+import { colors, spacing } from '@/theme';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { StyleSheet, Text, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, radii, spacing } from '@/theme';
 
 export function BrandHeader() {
   return (
     <View style={styles.container}>
       <View style={styles.logo} accessibilityElementsHidden>
-        <Ionicons name="location" size={26} color={colors.onPrimary} />
+        <MaterialCommunityIcons
+          name="home-map-marker"
+          size={28}
+          color={colors.onPrimary}
+        />
       </View>
       <View style={styles.copy}>
         <Text style={styles.brand} numberOfLines={1}>
@@ -28,7 +32,7 @@ const styles = StyleSheet.create({
   logo: {
     width: 48,
     height: 48,
-    borderRadius: radii.full,
+    borderRadius: 16,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -45,9 +49,9 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: 2,
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     color: colors.textSecondary,
-    letterSpacing: 1.6,
+    letterSpacing: 1.4,
   },
 });
