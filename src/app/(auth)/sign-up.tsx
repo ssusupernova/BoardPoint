@@ -14,7 +14,6 @@ import { BrandHeader } from '@/components/auth/BrandHeader';
 import { WelcomeHeader } from '@/components/auth/WelcomeHeader';
 import { LoginInput } from '@/components/auth/LoginInput';
 import { PasswordInput } from '@/components/auth/PasswordInput';
-import { RememberForgotRow } from '@/components/auth/RememberForgotRow';
 import { ErrorBanner } from '@/components/auth/ErrorBanner';
 import { LoginButton } from '@/components/auth/LoginButton';
 import { SocialDivider } from '@/components/auth/SocialDivider';
@@ -24,59 +23,68 @@ import { authService } from '@/services/auth';
 import { colors, spacing } from '@/theme';
 import { routes } from '@/routes';
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function toErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return 'Something went wrong. Please try again.';
 }
 
-export default function LoginScreen() {
+export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
-  const [identifier, setIdentifier] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const canSubmit =
-    !submitting && !googleLoading && identifier.trim().length > 0 && password.length > 0;
+    !submitting &&
+    !googleLoading &&
+    fullName.trim().length > 0 &&
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    confirmPassword.length > 0;
 
-  const runLogin = async () => {
-    setSubmitting(true);
+  const validate = (): string | null => {
+    if (!fullName.trim()) return 'Please enter your full name.';
+    if (!email.trim()) return 'Please enter your email address.';
+    if (!EMAIL_PATTERN.test(email.trim())) return 'Please enter a valid email address.';
+    if (password.length < 8) return 'Your password must be at least 8 characters long.';
+    if (password !== confirmPassword) return 'Your passwords do not match.';
+    return null;
+  };
+
+  const handleCreateAccount = async () => {
+    const problem = validate();
+    if (problem) {
+      setErrorMessage(problem);
+      return;
+    }
     setErrorMessage(null);
+    setSubmitting(true);
     try {
-      await authService.signIn({
-        identifier: identifier.trim(),
+      await authService.signUp({
+        fullName: fullName.trim(),
+        email: email.trim(),
         password,
-        rememberMe,
       });
       router.replace(routes.home);
     } catch (err) {
-      Alert.alert('Unable to sign in', toErrorMessage(err));
+      Alert.alert('Unable to create account', toErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleLogin = () => {
-    if (!identifier.trim()) {
-      setErrorMessage('Please enter your email or username.');
-      return;
-    }
-    if (!password) {
-      setErrorMessage('Please enter your password.');
-      return;
-    }
-    void runLogin();
-  };
-
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
+  const handleGoogleSignUp = async () => {
     setErrorMessage(null);
+    setGoogleLoading(true);
     try {
       await authService.signInWithGoogle();
-      // TODO(auth): replace with an authenticated home route once OAuth returns a session.
-      Alert.alert('Welcome back', 'You will be taken to your BoardPoint dashboard.');
+      router.replace(routes.home);
     } catch (err) {
       Alert.alert('Unable to continue with Google', toErrorMessage(err));
     } finally {
@@ -84,27 +92,12 @@ export default function LoginScreen() {
     }
   };
 
-  const handleForgotPassword = () => {
-    if (!identifier.trim()) {
-      setErrorMessage('Enter your email or username above, then tap “Forgot password?”.');
-      return;
+  const handleBackToLogin = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(routes.signIn);
     }
-    setErrorMessage(null);
-    void authService
-      .resetPassword(identifier.trim())
-      .then(() => {
-        Alert.alert(
-          'Password reset sent',
-          'Check your inbox for instructions to reset your password.'
-        );
-      })
-      .catch((err) => {
-        Alert.alert('Password recovery', toErrorMessage(err));
-      });
-  };
-
-  const handleSignUp = () => {
-    router.push(routes.signUp);
   };
 
   return (
@@ -129,34 +122,54 @@ export default function LoginScreen() {
             <BrandHeader />
 
             <View style={styles.welcome}>
-              <WelcomeHeader />
+              <WelcomeHeader
+                lines={['Create Your', 'BoardPoint Account.']}
+                subtitle="Set up your account to start mapping rental operations in minutes."
+              />
             </View>
 
             <View style={styles.fields}>
               <LoginInput
-                label="Email or username"
-                placeholder="Enter your email or username"
-                value={identifier}
-                onChangeText={setIdentifier}
-                textContentType="username"
-                autoComplete="username"
+                label="Full name"
+                placeholder="Enter your full name"
+                icon="person-outline"
+                value={fullName}
+                onChangeText={setFullName}
+                textContentType="name"
+                autoComplete="name"
+                returnKeyType="next"
+              />
+
+              <LoginInput
+                label="Email address"
+                placeholder="Enter your email address"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                autoComplete="email"
                 returnKeyType="next"
               />
 
               <PasswordInput
                 label="Password"
-                placeholder="Enter your password"
+                placeholder="Create a password"
                 value={password}
                 onChangeText={setPassword}
-                returnKeyType="done"
-                textContentType="password"
-                onSubmitEditing={handleLogin}
+                textContentType="newPassword"
+                autoComplete="new-password"
+                returnKeyType="next"
               />
 
-              <RememberForgotRow
-                rememberMe={rememberMe}
-                onToggleRemember={() => setRememberMe((v) => !v)}
-                onForgotPassword={handleForgotPassword}
+              <PasswordInput
+                label="Confirm password"
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                textContentType="newPassword"
+                autoComplete="new-password"
+                returnKeyType="done"
+                onSubmitEditing={() => void handleCreateAccount()}
               />
             </View>
 
@@ -164,13 +177,13 @@ export default function LoginScreen() {
 
             <View style={styles.actions}>
               <LoginButton
-                onPress={handleLogin}
+                onPress={() => void handleCreateAccount()}
                 loading={submitting}
                 disabled={googleLoading || !canSubmit}
               />
               <SocialDivider />
               <GoogleLoginButton
-                onPress={() => void handleGoogleLogin()}
+                onPress={() => void handleGoogleSignUp()}
                 loading={googleLoading}
                 disabled={submitting}
               />
@@ -178,7 +191,12 @@ export default function LoginScreen() {
 
             <View style={styles.spacer} />
 
-            <SignupPrompt onAction={handleSignUp} disabled={submitting || googleLoading} />
+            <SignupPrompt
+              prompt="Already have an account?"
+              actionLabel="Log in"
+              onAction={handleBackToLogin}
+              disabled={submitting || googleLoading}
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

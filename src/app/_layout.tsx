@@ -1,14 +1,35 @@
-import { Stack } from "expo-router";
+import { Stack } from 'expo-router';
+import { useAuthSession } from '@/services/auth';
+import { SplashScreenController } from '@/splash';
+import { colors } from '@/theme';
 
 export default function RootLayout() {
   return (
-    <Stack>
-      <Stack.Screen
-        name="index"
-        options={{
-          headerShown: false,
-        }}
-      />
+    <>
+      <SplashScreenController />
+      <RootNavigator />
+    </>
+  );
+}
+
+function RootNavigator() {
+  const { session } = useAuthSession();
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="home" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)/sign-up" />
+      </Stack.Protected>
     </Stack>
   );
 }
