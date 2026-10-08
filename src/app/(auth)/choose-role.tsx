@@ -12,9 +12,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BrandHeader } from '../../components/auth/BrandHeader';
-import { RoleCard, type UserRole } from '../../components/auth/RoleCard';
-import { SignupPrompt } from '../../components/auth/SignupPrompt';
+import { BrandHeader } from '@/components/auth/BrandHeader';
+import { RoleCard, type UserRole } from '@/components/auth/RoleCard';
+import { SignupPrompt } from '@/components/auth/SignupPrompt';
 
 export default function ChooseRoleScreen() {
   const insets = useSafeAreaInsets();

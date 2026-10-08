@@ -1,15 +1,17 @@
-import {
-  useState } from 'react';
+import { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
-  View
+  Text,
+  View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { BrandHeader } from '@/components/auth/BrandHeader/BrandHeader';
 import { WelcomeHeader } from '@/components/auth/WelcomeHeader/WelcomeHeader';
 import { LoginInput } from '@/components/auth/LoginInput/LoginInput';
@@ -20,7 +22,7 @@ import { SocialDivider } from '@/components/auth/SocialDivider/SocialDivider';
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton/GoogleLoginButton';
 import { SignupPrompt } from '@/components/auth/SignupPrompt/SignupPrompt';
 import { authService } from '@/services/auth';
-
+import { colors } from '@/theme';
 import { routes } from '@/routes';
 import { styles } from './SignUpScreen.styles';
 
@@ -33,6 +35,9 @@ function toErrorMessage(err: unknown): string {
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ role?: string }>();
+  const role = params.role === 'landlord' ? 'landlord' : 'renter';
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -71,6 +76,7 @@ export default function SignUpScreen() {
         fullName: fullName.trim(),
         email: email.trim(),
         password,
+        role,
       });
       router.replace(routes.home);
     } catch (err) {
@@ -94,10 +100,14 @@ export default function SignUpScreen() {
   };
 
   const handleBackToLogin = () => {
+    router.replace(routes.signIn);
+  };
+
+  const handleChangeRole = () => {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace(routes.signIn);
+      router.replace(routes.chooseRole);
     }
   };
 
@@ -122,10 +132,36 @@ export default function SignUpScreen() {
           <View style={styles.inner}>
             <BrandHeader />
 
+            <View style={styles.roleBadgeRow}>
+              <Pressable
+                onPress={handleChangeRole}
+                accessibilityRole="button"
+                accessibilityLabel={`Signing up as ${role}. Tap to change role.`}
+                style={styles.roleBadge}
+              >
+                <Ionicons
+                  name={role === 'landlord' ? 'home-outline' : 'briefcase-outline'}
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text style={styles.roleBadgeText}>
+                  Signing up as {role === 'landlord' ? 'Landlord' : 'Renter'}
+                </Text>
+                <Text style={styles.roleBadgeChange}>Change</Text>
+              </Pressable>
+            </View>
+
             <View style={styles.welcome}>
               <WelcomeHeader
-                lines={['Create Your', 'BoardPoint Account.']}
-                subtitle="Set up your account to start mapping rental operations in minutes."
+                lines={[
+                  'Create Your',
+                  role === 'landlord' ? 'Landlord Account.' : 'BoardPoint Account.',
+                ]}
+                subtitle={
+                  role === 'landlord'
+                    ? 'Set up your landlord account to start managing and listing boarding-houses.'
+                    : 'Set up your account to start mapping rental operations in minutes.'
+                }
               />
             </View>
 
@@ -204,5 +240,3 @@ export default function SignUpScreen() {
     </View>
   );
 }
-
-
