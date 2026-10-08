@@ -33,7 +33,13 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "BoardPoint uses your location to centre the map on your room search point."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
