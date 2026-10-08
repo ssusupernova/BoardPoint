@@ -1,0 +1,8 @@
+/** Poppins family names; load with useFonts({ ...Poppins }) in the root layout. */
+export const fonts = {
+  regular: 'Poppins_400Regular',
+  medium: 'Poppins_500Medium',
+  semibold: 'Poppins_600SemiBold',
+  bold: 'Poppins_700Bold',
+  extrabold: 'Poppins_800ExtraBold',
+} as const;
