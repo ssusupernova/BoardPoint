@@ -1,3 +1,4 @@
+export { default } from '@/screens/SignUpScreen/SignUpScreen';
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
 import { LoginButton } from '@/components/auth/LoginButton';
 import { LoginInput } from '@/components/auth/LoginInput';

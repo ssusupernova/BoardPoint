@@ -14,9 +14,8 @@
  */
 
 import { useSyncExternalStore } from 'react';
-import { Platform } from 'react-native';
 import * as Crypto from 'expo-crypto';
-import * as SecureStore from 'expo-secure-store';
+import { storageGet, storageSet } from '@/services/storage';
 
 export class AuthNotConfiguredError extends Error {
   constructor(feature: string) {
@@ -68,7 +67,6 @@ export interface AuthService {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const STORAGE_PREFIX = 'boardpoint.';
 
 interface StoredAccount {
   id: string;
@@ -84,37 +82,6 @@ interface StoredAccount {
 type AccountIndexEntry = Pick<StoredAccount, 'id' | 'email' | 'username'>;
 
 /* ---------------------------------------------------------------- storage */
-
-async function storageGet(key: string): Promise<string | null> {
-  try {
-    if (Platform.OS === 'web') {
-      return localStorage.getItem(STORAGE_PREFIX + key);
-    }
-    return await SecureStore.getItemAsync(STORAGE_PREFIX + key);
-  } catch {
-    return null;
-  }
-}
-
-async function storageSet(key: string, value: string | null): Promise<void> {
-  try {
-    if (Platform.OS === 'web') {
-      if (value === null) {
-        localStorage.removeItem(STORAGE_PREFIX + key);
-      } else {
-        localStorage.setItem(STORAGE_PREFIX + key, value);
-      }
-      return;
-    }
-    if (value === null) {
-      await SecureStore.deleteItemAsync(STORAGE_PREFIX + key);
-    } else {
-      await SecureStore.setItemAsync(STORAGE_PREFIX + key, value);
-    }
-  } catch {
-    // Best effort: a failed write only drops persistence, not the running session.
-  }
-}
 
 async function hashPassword(password: string, salt: string): Promise<string> {
   return Crypto.digestStringAsync(

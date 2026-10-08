@@ -1,3 +1,18 @@
+import { BrandHeader } from '@/components/auth/BrandHeader';
+import { ErrorBanner } from '@/components/auth/ErrorBanner';
+import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
+import { LoginButton } from '@/components/auth/LoginButton';
+import { LoginInput } from '@/components/auth/LoginInput';
+import { PasswordInput } from '@/components/auth/PasswordInput';
+import { RememberForgotRow } from '@/components/auth/RememberForgotRow';
+import { SignupPrompt } from '@/components/auth/SignupPrompt';
+import { SocialDivider } from '@/components/auth/SocialDivider';
+import { WelcomeHeader } from '@/components/auth/WelcomeHeader';
+import { routes } from '@/routes';
+import { authService } from '@/services/auth';
+import { colors, spacing } from '@/theme';
+import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
   Alert,
@@ -7,22 +22,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BrandHeader } from '@/components/auth/BrandHeader';
-import { WelcomeHeader } from '@/components/auth/WelcomeHeader';
-import { LoginInput } from '@/components/auth/LoginInput';
-import { PasswordInput } from '@/components/auth/PasswordInput';
-import { RememberForgotRow } from '@/components/auth/RememberForgotRow';
-import { ErrorBanner } from '@/components/auth/ErrorBanner';
-import { LoginButton } from '@/components/auth/LoginButton';
-import { SocialDivider } from '@/components/auth/SocialDivider';
-import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
-import { SignupPrompt } from '@/components/auth/SignupPrompt';
-import { authService } from '@/services/auth';
-import { colors, spacing } from '@/theme';
-import { routes } from '@/routes';
 
 function toErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -104,7 +104,7 @@ export default function LoginScreen() {
   };
 
   const handleSignUp = () => {
-    router.push(routes.chooseRole);
+    router.push(routes.signUp);
   };
 
   return (

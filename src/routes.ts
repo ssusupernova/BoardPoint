@@ -6,5 +6,6 @@ export const routes = {
   signUp: '/sign-up' as Href,
   forgotPassword: '/forgot-password' as Href,
   home: '/home' as Href,
+  preferences: '/renter/preferences',
   landlordListSpace: '/landlord/list-space' as Href,
 } as const;
