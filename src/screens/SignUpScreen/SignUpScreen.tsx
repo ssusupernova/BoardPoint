@@ -1,13 +1,4 @@
-import { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,83 +12,32 @@ import { LoginButton } from '@/components/auth/LoginButton/LoginButton';
 import { SocialDivider } from '@/components/auth/SocialDivider/SocialDivider';
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton/GoogleLoginButton';
 import { SignupPrompt } from '@/components/auth/SignupPrompt/SignupPrompt';
-import { authService } from '@/services/auth';
+import { useSignUp, type SignUpRole } from '@/hooks/useSignUp';
 import { colors } from '@/theme';
-import { routes, dashboardForRole } from '@/routes';
+import { routes } from '@/routes';
 import { styles } from './SignUpScreen.styles';
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function toErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return 'Something went wrong. Please try again.';
-}
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ role?: string }>();
-  const role = params.role === 'landlord' ? 'landlord' : 'renter';
+  const role: SignUpRole = params.role === 'landlord' ? 'landlord' : 'renter';
 
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const canSubmit =
-    !submitting &&
-    !googleLoading &&
-    fullName.trim().length > 0 &&
-    email.trim().length > 0 &&
-    password.length > 0 &&
-    confirmPassword.length > 0;
-
-  const validate = (): string | null => {
-    if (!fullName.trim()) return 'Please enter your full name.';
-    if (!email.trim()) return 'Please enter your email address.';
-    if (!EMAIL_PATTERN.test(email.trim())) return 'Please enter a valid email address.';
-    if (password.length < 8) return 'Your password must be at least 8 characters long.';
-    if (password !== confirmPassword) return 'Your passwords do not match.';
-    return null;
-  };
-
-  const handleCreateAccount = async () => {
-    const problem = validate();
-    if (problem) {
-      setErrorMessage(problem);
-      return;
-    }
-    setErrorMessage(null);
-    setSubmitting(true);
-    try {
-      const session = await authService.signUp({
-        fullName: fullName.trim(),
-        email: email.trim(),
-        password,
-        role,
-      });
-      router.replace(dashboardForRole(session.user.role));
-    } catch (err) {
-      Alert.alert('Unable to create account', toErrorMessage(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleGoogleSignUp = async () => {
-    setErrorMessage(null);
-    setGoogleLoading(true);
-    try {
-      await authService.signInWithGoogle();
-      router.replace(dashboardForRole(undefined));
-    } catch (err) {
-      Alert.alert('Unable to continue with Google', toErrorMessage(err));
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
+  const {
+    fullName,
+    setFullName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    confirmPassword,
+    setConfirmPassword,
+    submitting,
+    googleLoading,
+    errorMessage,
+    canSubmit,
+    handleCreateAccount,
+    handleGoogleSignUp,
+  } = useSignUp(role);
 
   const handleBackToLogin = () => {
     router.replace(routes.signIn);

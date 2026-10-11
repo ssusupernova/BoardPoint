@@ -17,7 +17,7 @@ type Props = {
 /**
  * Renter tab scaffold: scrollable content above the shared fixed bottom
  * navigation. Every renter tab page renders through this so the chrome is
- * identical everywhere.
+ * identical everywhere. Lives under `navigation` since it owns tab chrome.
  */
 export function RenterScreen({ active, children, scroll = true, contentContainerStyle }: Props) {
   return (

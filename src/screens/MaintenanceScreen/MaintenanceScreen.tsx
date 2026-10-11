@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { OutlineButton } from '@/components/common/OutlineButton/OutlineButton';
+import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
 import { PageHeader } from '@/components/common/PageHeader/PageHeader';
 import { ScreenContainer } from '@/components/common/ScreenContainer/ScreenContainer';
 import { MaintenanceCard } from '@/components/renter/dashboard/MaintenanceCard/MaintenanceCard';

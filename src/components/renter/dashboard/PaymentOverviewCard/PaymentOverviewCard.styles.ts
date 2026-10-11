@@ -1,14 +1,9 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radii, shadows, spacing } from '@/theme';
+import { card as cardToken, colors, fonts, radii, spacing, uppercaseLabel } from '@/theme';
 
 export const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.xl,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    ...shadows.card,
+    ...cardToken,
   },
   head: {
     flexDirection: 'row',
@@ -25,11 +20,7 @@ export const styles = StyleSheet.create({
   },
   label: {
     flex: 1,
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    ...uppercaseLabel,
   },
   amount: {
     marginTop: spacing.md,

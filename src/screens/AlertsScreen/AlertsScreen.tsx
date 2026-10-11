@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { PageHeader } from '@/components/common/PageHeader/PageHeader';
-import { RenterScreen } from '@/components/renter/RenterScreen/RenterScreen';
+import { RenterScreen } from '@/components/navigation/RenterScreen/RenterScreen';
 import { ReminderCard } from '@/components/renter/dashboard/ReminderCard/ReminderCard';
 import { renterReminders, type Reminder } from '@/data/mock';
 import { useMaintenanceTickets } from '@/services/maintenance';

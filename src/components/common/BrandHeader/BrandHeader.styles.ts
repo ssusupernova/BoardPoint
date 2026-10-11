@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 export const styles = StyleSheet.create({
   container: {
@@ -12,7 +12,6 @@ export const styles = StyleSheet.create({
     flexShrink: 1,
   },
   logo: {
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -22,13 +21,11 @@ export const styles = StyleSheet.create({
   },
   brand: {
     fontWeight: '800',
-    color: colors.textPrimary,
     letterSpacing: -0.4,
   },
   subtitle: {
     marginTop: 2,
     fontWeight: '700',
-    color: colors.textSecondary,
   },
   trailing: {
     marginLeft: 'auto',

@@ -1,14 +1,9 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radii, shadows, spacing } from '@/theme';
+import { cardSoft, colors, fonts, radii, spacing } from '@/theme';
 
 export const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    ...shadows.subtle,
+    ...cardSoft,
   },
   head: {
     flexDirection: 'row',

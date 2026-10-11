@@ -1,9 +1,9 @@
 import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BrandHeader } from '@/components/common/BrandHeader/BrandHeader';
-import { OutlineButton } from '@/components/common/OutlineButton/OutlineButton';
+import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
 import { ProfileAvatar } from '@/components/common/ProfileAvatar/ProfileAvatar';
-import { RenterScreen } from '@/components/renter/RenterScreen/RenterScreen';
+import { RenterScreen } from '@/components/navigation/RenterScreen/RenterScreen';
 import { SectionHeader } from '@/components/renter/SectionHeader/SectionHeader';
 import { MaintenanceCard } from '@/components/renter/dashboard/MaintenanceCard/MaintenanceCard';
 import { PaymentOverviewCard } from '@/components/renter/dashboard/PaymentOverviewCard/PaymentOverviewCard';

@@ -1,7 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { radii, spacing } from '@/theme';
-import { landlordColors } from '@/theme/landlord';
+import { landlordColors, radii, spacing } from '@/theme';
 
 type Props = {
   accessibilityLabel: string;

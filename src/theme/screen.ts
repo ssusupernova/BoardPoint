@@ -1,9 +1,11 @@
 import { colors } from './colors';
+import { layout } from './layout';
 
 /**
  * Shared screen scaffolding: root container, flex filler, decorative circle,
- * centered scroll content, and the 440px-max inner column. Every full-screen
- * route spreads this into its own StyleSheet.create so keys stay the same.
+ * centered scroll content, and the max-width inner column. Every full-screen
+ * auth/welcome route spreads this into its own StyleSheet.create so keys stay
+ * the same. Metrics live in `theme/layout`.
  */
 export const screenScaffold = {
   root: {
@@ -24,11 +26,11 @@ export const screenScaffold = {
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: layout.authPaddingHorizontal,
   },
   inner: {
     width: '100%' as const,
-    maxWidth: 440,
+    maxWidth: layout.authMaxWidth,
     alignSelf: 'center' as const,
   },
 };

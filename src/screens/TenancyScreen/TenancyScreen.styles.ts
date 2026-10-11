@@ -1,15 +1,10 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radii, shadows, spacing } from '@/theme';
+import { card as cardToken, colors, fonts, spacing } from '@/theme';
 
 export const styles = StyleSheet.create({
   card: {
     marginTop: spacing.xl,
-    borderRadius: radii.xl,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    ...shadows.card,
+    ...cardToken,
   },
   headRow: {
     flexDirection: 'row',

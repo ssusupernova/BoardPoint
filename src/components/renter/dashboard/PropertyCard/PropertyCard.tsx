@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
-import { OutlineButton } from '@/components/common/OutlineButton/OutlineButton';
+import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
 import type { Tenancy } from '@/data/mock';
 import { colors } from '@/theme';
 import { formatPeso } from '@/utils/currency';

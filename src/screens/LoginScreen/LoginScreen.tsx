@@ -1,14 +1,5 @@
-import {
-  useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  View
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandHeader } from '@/components/auth/BrandHeader/BrandHeader';
 import { WelcomeHeader } from '@/components/auth/WelcomeHeader/WelcomeHeader';
@@ -20,93 +11,27 @@ import { LoginButton } from '@/components/auth/LoginButton/LoginButton';
 import { SocialDivider } from '@/components/auth/SocialDivider/SocialDivider';
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton/GoogleLoginButton';
 import { SignupPrompt } from '@/components/auth/SignupPrompt/SignupPrompt';
-import { authService } from '@/services/auth';
-
-import { routes, dashboardForRole } from '@/routes';
+import { useSignIn } from '@/hooks/useSignIn';
 import { styles } from './LoginScreen.styles';
-
-function toErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return 'Something went wrong. Please try again.';
-}
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const canSubmit =
-    !submitting && !googleLoading && identifier.trim().length > 0 && password.length > 0;
-
-  const runLogin = async () => {
-    setSubmitting(true);
-    setErrorMessage(null);
-    try {
-      const session = await authService.signIn({
-        identifier: identifier.trim(),
-        password,
-        rememberMe,
-      });
-      router.replace(dashboardForRole(session.user.role));
-    } catch (err) {
-      Alert.alert('Unable to sign in', toErrorMessage(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleLogin = () => {
-    if (!identifier.trim()) {
-      setErrorMessage('Please enter your email or username.');
-      return;
-    }
-    if (!password) {
-      setErrorMessage('Please enter your password.');
-      return;
-    }
-    void runLogin();
-  };
-
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    setErrorMessage(null);
-    try {
-      await authService.signInWithGoogle();
-      // TODO(auth): replace with an authenticated home route once OAuth returns a session.
-      Alert.alert('Welcome back', 'You will be taken to your BoardPoint dashboard.');
-    } catch (err) {
-      Alert.alert('Unable to continue with Google', toErrorMessage(err));
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleForgotPassword = () => {
-    if (!identifier.trim()) {
-      setErrorMessage('Enter your email or username above, then tap “Forgot password?”.');
-      return;
-    }
-    setErrorMessage(null);
-    void authService
-      .resetPassword(identifier.trim())
-      .then(() => {
-        Alert.alert(
-          'Password reset sent',
-          'Check your inbox for instructions to reset your password.'
-        );
-      })
-      .catch((err) => {
-        Alert.alert('Password recovery', toErrorMessage(err));
-      });
-  };
-
-  const handleSignUp = () => {
-    router.push(routes.chooseRole);
-  };
+  const {
+    identifier,
+    setIdentifier,
+    password,
+    setPassword,
+    rememberMe,
+    toggleRememberMe,
+    submitting,
+    googleLoading,
+    errorMessage,
+    canSubmit,
+    handleLogin,
+    handleGoogleLogin,
+    handleForgotPassword,
+    handleSignUp,
+  } = useSignIn();
 
   return (
     <View style={styles.root}>
@@ -156,7 +81,7 @@ export default function LoginScreen() {
 
               <RememberForgotRow
                 rememberMe={rememberMe}
-                onToggleRemember={() => setRememberMe((v) => !v)}
+                onToggleRemember={toggleRememberMe}
                 onForgotPassword={handleForgotPassword}
               />
             </View>
@@ -186,4 +111,3 @@ export default function LoginScreen() {
     </View>
   );
 }
-

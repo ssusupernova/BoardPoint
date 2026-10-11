@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { PageHeader } from '@/components/common/PageHeader/PageHeader';
 import { ProfileAvatar } from '@/components/common/ProfileAvatar/ProfileAvatar';
-import { RenterScreen } from '@/components/renter/RenterScreen/RenterScreen';
+import { RenterScreen } from '@/components/navigation/RenterScreen/RenterScreen';
 import { SectionHeader } from '@/components/renter/SectionHeader/SectionHeader';
 import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
 import { routes } from '@/routes';

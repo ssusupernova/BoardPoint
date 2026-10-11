@@ -8,7 +8,7 @@ import { BrandHeader } from '@/components/landlord/BrandHeader';
 import { authService, useAuthSession } from '@/services/auth';
 import { landlordMockListings } from '@/data/mock';
 import { routes } from '@/routes';
-import { landlordColors } from '@/theme/landlord';
+import { landlordColors } from '@/theme';
 import { formatNumber } from '@/utils/date';
 import { styles } from './LandlordDashboardScreen.styles';
 

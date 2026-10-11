@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { PageHeader } from '@/components/common/PageHeader/PageHeader';
-import { RenterScreen } from '@/components/renter/RenterScreen/RenterScreen';
+import { RenterScreen } from '@/components/navigation/RenterScreen/RenterScreen';
 import { SectionHeader } from '@/components/renter/SectionHeader/SectionHeader';
 import { PaymentHistoryRow } from '@/components/renter/PaymentHistoryRow/PaymentHistoryRow';
 import { PaymentOverviewCard } from '@/components/renter/dashboard/PaymentOverviewCard/PaymentOverviewCard';

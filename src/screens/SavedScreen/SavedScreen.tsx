@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { PageHeader } from '@/components/common/PageHeader/PageHeader';
-import { RenterScreen } from '@/components/renter/RenterScreen/RenterScreen';
+import { RenterScreen } from '@/components/navigation/RenterScreen/RenterScreen';
 import { renterMockRooms } from '@/data/mock';
 import { colors } from '@/theme';
 import { formatPeso } from '@/utils/currency';

@@ -1,15 +1,10 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radii, shadows, spacing } from '@/theme';
+import { card as cardToken, colors, fonts, radii, spacing, uppercaseLabel } from '@/theme';
 
 export const styles = StyleSheet.create({
   billCard: {
     marginTop: spacing.xl,
-    borderRadius: radii.xl,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    ...shadows.card,
+    ...cardToken,
   },
   billHead: {
     flexDirection: 'row',
@@ -17,11 +12,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   billLabel: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    ...uppercaseLabel,
   },
   billAmount: {
     marginTop: spacing.md,

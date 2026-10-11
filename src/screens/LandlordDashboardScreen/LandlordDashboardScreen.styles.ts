@@ -1,6 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { radii, spacing } from '@/theme';
-import { landlordColors } from '@/theme/landlord';
+import { landlordColors, radii, spacing } from '@/theme';
 
 export const styles = StyleSheet.create({
   root: {

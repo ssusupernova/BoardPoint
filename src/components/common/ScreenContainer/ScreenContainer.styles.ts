@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors } from '@/theme';
+import { colors, layout } from '@/theme';
 
 export const styles = StyleSheet.create({
   root: {
@@ -11,15 +11,15 @@ export const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: layout.contentPaddingHorizontal,
   },
   staticContent: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: layout.contentPaddingHorizontal,
   },
   inner: {
     width: '100%',
-    maxWidth: 520,
+    maxWidth: layout.contentMaxWidth,
     alignSelf: 'center',
   },
 });
