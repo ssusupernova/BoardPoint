@@ -43,4 +43,10 @@ export const styles = StyleSheet.create({
   pressed: {
     opacity: 0.75,
   },
+  photo: {
+    marginTop: spacing.md,
+    width: '100%',
+    height: 160,
+    borderRadius: radii.md,
+  },
 });

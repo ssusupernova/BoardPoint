@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { PageHeader } from '@/components/common/PageHeader/PageHeader';
 import { ScreenContainer } from '@/components/common/ScreenContainer/ScreenContainer';
@@ -15,8 +18,31 @@ export default function ReportIssueScreen() {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [detail, setDetail] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const pickPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Photo access needed',
+        'Allow photo access to attach a picture to your maintenance report.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setPhotoUri(result.assets[0]?.uri ?? null);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!title.trim() || !detail.trim()) {
@@ -26,7 +52,7 @@ export default function ReportIssueScreen() {
     setError(null);
     setSaving(true);
     try {
-      await submitMaintenanceTicket({ title, category, detail });
+      await submitMaintenanceTicket({ title, category, detail, photoUri: photoUri ?? undefined });
       router.back();
     } finally {
       setSaving(false);
@@ -85,6 +111,42 @@ export default function ReportIssueScreen() {
             multiline
             style={[styles.input, styles.textarea]}
           />
+        </View>
+
+        <View>
+          <Text style={styles.label}>Photo (optional)</Text>
+          {photoUri ? (
+            <View style={styles.photoWrap}>
+              <Image
+                source={{ uri: photoUri }}
+                style={styles.photo}
+                contentFit="cover"
+                transition={150}
+              />
+              <Pressable
+                onPress={() => setPhotoUri(null)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Remove photo"
+                style={({ pressed }) => [styles.photoRemove, pressed && styles.photoRemovePressed]}
+              >
+                <Ionicons name="close" size={16} color={colors.onPrimary} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => void pickPhoto()}
+              accessibilityRole="button"
+              accessibilityLabel="Add a photo to your report"
+              style={({ pressed }) => [styles.photoPicker, pressed && styles.photoPickerPressed]}
+            >
+              <View style={styles.photoPickerIcon}>
+                <Ionicons name="camera-outline" size={22} color={colors.primary} />
+              </View>
+              <Text style={styles.photoPickerText}>Add a photo</Text>
+              <Text style={styles.photoPickerHint}>Show your landlord what&apos;s wrong</Text>
+            </Pressable>
+          )}
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}

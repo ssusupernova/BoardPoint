@@ -1,0 +1,151 @@
+import { StyleSheet } from 'react-native';
+import { colors, fonts, radii, shadows, spacing } from '@/theme';
+
+export const styles = StyleSheet.create({
+  missing: {
+    marginTop: spacing.xl,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  media: {
+    marginTop: spacing.lg,
+    height: 200,
+    borderRadius: radii.xl,
+    backgroundColor: colors.peach,
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  availability: {
+    position: 'absolute',
+    left: spacing.md,
+    bottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.card,
+    borderRadius: radii.full,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    ...shadows.subtle,
+  },
+  availabilityText: {
+    fontFamily: fonts.semibold,
+    fontSize: 11,
+    color: colors.primary,
+  },
+  favorite: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    ...shadows.subtle,
+  },
+  favoritePressed: {
+    opacity: 0.7,
+  },
+  head: {
+    marginTop: spacing.lg,
+  },
+  title: {
+    fontFamily: fonts.extrabold,
+    fontSize: 22,
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  details: {
+    marginTop: 3,
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    color: colors.primary,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.xs,
+  },
+  location: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  rentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginTop: spacing.md,
+  },
+  rent: {
+    fontFamily: fonts.extrabold,
+    fontSize: 26,
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  perMonth: {
+    marginLeft: 4,
+    marginBottom: 3,
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: spacing.md,
+  },
+  section: {
+    marginTop: spacing.xl,
+    gap: 8,
+  },
+  sectionTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 15,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  amenityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  amenityText: {
+    fontFamily: fonts.regular,
+    fontSize: 13.5,
+    color: colors.textPrimary,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  metaText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  action: {
+    marginTop: spacing.xl,
+  },
+  note: {
+    marginTop: spacing.md,
+    fontFamily: fonts.regular,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: colors.textSecondary,
+  },
+});

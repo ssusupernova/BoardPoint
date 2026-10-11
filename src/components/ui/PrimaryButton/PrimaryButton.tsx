@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -13,6 +14,8 @@ type Props = {
   loading?: boolean;
   disabled?: boolean;
   accessibilityLabel?: string;
+  /** Trailing icon; defaults to a forward arrow. */
+  icon?: ComponentProps<typeof Ionicons>['name'];
 };
 
 export function PrimaryButton({
@@ -21,6 +24,7 @@ export function PrimaryButton({
   loading = false,
   disabled = false,
   accessibilityLabel,
+  icon = 'arrow-forward',
 }: Props) {
   const isDisabled = loading || disabled;
 
@@ -42,7 +46,7 @@ export function PrimaryButton({
       ) : (
         <>
           <Text style={styles.label}>{label}</Text>
-          <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} style={styles.arrow} />
+          <Ionicons name={icon} size={18} color={colors.onPrimary} style={styles.arrow} />
         </>
       )}
     </Pressable>

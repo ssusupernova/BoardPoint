@@ -19,6 +19,8 @@ export interface MaintenanceInput {
   title: string;
   category: string;
   detail: string;
+  /** Optional photo attached to the report. */
+  photoUri?: string;
 }
 
 let tickets: MaintenanceTicket[] = [...renterMaintenance];
@@ -69,8 +71,10 @@ export async function submitMaintenanceTicket(input: MaintenanceInput): Promise<
     id: Crypto.randomUUID(),
     title: input.title.trim(),
     detail: input.detail.trim(),
+    category: input.category,
     updatedAt: toISODate(new Date()),
     status: 'Scheduled',
+    photoUri: input.photoUri,
   };
   setTickets([ticket, ...tickets]);
   await storageSet(STORAGE_KEY, JSON.stringify(tickets));

@@ -1,8 +1,6 @@
 import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BrandHeader } from '@/components/common/BrandHeader/BrandHeader';
 import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
-import { ProfileAvatar } from '@/components/common/ProfileAvatar/ProfileAvatar';
 import { RenterScreen } from '@/components/navigation/RenterScreen/RenterScreen';
 import { SectionHeader } from '@/components/renter/SectionHeader/SectionHeader';
 import { MaintenanceCard } from '@/components/renter/dashboard/MaintenanceCard/MaintenanceCard';
@@ -29,17 +27,6 @@ export default function RenterDashboardScreen() {
 
   return (
     <RenterScreen active="home">
-      <BrandHeader
-        subtitle="BOARDING HOUSE RENTAL"
-        trailing={
-          <ProfileAvatar
-            name={session.user.fullName}
-            onPress={() => router.push(routes.renterProfile)}
-            accessibilityLabel="Open your profile"
-          />
-        }
-      />
-
       <Text style={styles.eyebrow}>Renter dashboard</Text>
       <Text style={styles.date}>{formatLongDate(new Date())}</Text>
       <Text style={styles.welcome}>Mabuhay ka, {firstName}!</Text>

@@ -30,6 +30,24 @@ export const styles = StyleSheet.create({
   iconWrapActive: {
     backgroundColor: colors.peach,
   },
+  badge: {
+    position: 'absolute',
+    top: -3,
+    right: 4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  badgeText: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    lineHeight: 13,
+    color: colors.onPrimary,
+  },
   label: {
     fontFamily: fonts.medium,
     fontSize: 11,

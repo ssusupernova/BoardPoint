@@ -34,6 +34,13 @@ export function CalendarModal({ visible, value, onSelect, onClose }: Props) {
   const anchor = selected ?? today;
   const view = navigated ?? { year: anchor.getFullYear(), month: anchor.getMonth() };
 
+  // Reset the browsed month on close so the calendar reopens on the selected
+  // date instead of wherever the renter left it last time.
+  const close = () => {
+    setNavigated(null);
+    onClose();
+  };
+
   const shiftMonth = (delta: number) => {
     const next = new Date(view.year, view.month + delta, 1);
     setNavigated({ year: next.getFullYear(), month: next.getMonth() });
@@ -53,8 +60,8 @@ export function CalendarModal({ visible, value, onSelect, onClose }: Props) {
     today.getDate() === day;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close calendar">
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
+      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close calendar">
         <Pressable style={styles.card} onPress={() => {}}>
           <View style={styles.header}>
             <Pressable
@@ -98,7 +105,7 @@ export function CalendarModal({ visible, value, onSelect, onClose }: Props) {
                     key={`day-${day}`}
                     onPress={() => {
                       onSelect(toISODate(new Date(view.year, view.month, day)));
-                      onClose();
+                      close();
                     }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: selectedDay }}

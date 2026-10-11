@@ -6,7 +6,8 @@ export type StatusVariant = 'neutral' | 'success' | 'warning' | 'info';
 export type StatusInput = TenantStatus | PaymentOverview['status'];
 
 /** Map a domain status onto a StatusBadge colour variant. */
-export function statusVariant(status: StatusInput): StatusVariant {
+export function statusVariant(status: StatusInput | string): StatusVariant {
+  if (/^due/i.test(status)) return 'warning';
   switch (status) {
     case 'Active':
     case 'Completed':

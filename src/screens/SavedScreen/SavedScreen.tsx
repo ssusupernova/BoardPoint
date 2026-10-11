@@ -1,41 +1,73 @@
 import { Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { PageHeader } from '@/components/common/PageHeader/PageHeader';
+import { useRouter } from 'expo-router';
 import { RenterScreen } from '@/components/navigation/RenterScreen/RenterScreen';
+import { RoomListingCard } from '@/components/renter/rooms/RoomListingCard/RoomListingCard';
+import { PrimaryButton } from '@/components/ui/PrimaryButton/PrimaryButton';
 import { renterMockRooms } from '@/data/mock';
+import { routes } from '@/routes';
+import { toggleFavoriteRoom, useFavoriteRoomIds } from '@/services/favorites';
 import { colors } from '@/theme';
-import { formatPeso } from '@/utils/currency';
 import { styles } from './SavedScreen.styles';
 
 export default function SavedScreen() {
-  const rooms = renterMockRooms.slice(0, 3);
+  const router = useRouter();
+  const favoriteIds = useFavoriteRoomIds();
+  const rooms = renterMockRooms.filter((room) => favoriteIds.includes(room.id));
 
   return (
-    <RenterScreen active="saved">
-      <PageHeader title="Saved rooms" subtitle="Rooms you bookmarked" />
+    <RenterScreen
+      active="saved"
+      title="Favorite rooms"
+      subtitle="A little shortlist for your next chapter."
+    >
+      <View style={styles.headerRow}>
+        <Text style={styles.count}>
+          {rooms.length} saved {rooms.length === 1 ? 'room' : 'rooms'}
+        </Text>
+        <View style={styles.sort} accessibilityRole="text">
+          <Text style={styles.sortText}>Recently saved</Text>
+          <Ionicons name="chevron-down" size={14} color={colors.primary} />
+        </View>
+      </View>
 
-      <View style={styles.list}>
-        {rooms.map((room) => (
-          <View key={room.id} style={styles.card}>
-            <View style={styles.icon}>
-              <Ionicons name="bed-outline" size={22} color={colors.primary} />
-            </View>
-
-            <View style={styles.copy}>
-              <Text style={styles.title} numberOfLines={1}>
-                {room.title}
-              </Text>
-              <Text style={styles.meta} numberOfLines={1}>
-                {room.area} · {room.distanceKm} km away
-              </Text>
-              <Text style={styles.price}>{formatPeso(room.price)}/mo</Text>
-            </View>
-
-            <View style={styles.matchPill}>
-              <Text style={styles.matchText}>{room.matchPercent}% match</Text>
-            </View>
+      {rooms.length ? (
+        <View style={styles.list}>
+          {rooms.map((room) => (
+            <RoomListingCard
+              key={room.id}
+              room={room}
+              isFavorite={favoriteIds.includes(room.id)}
+              onToggleFavorite={() => void toggleFavoriteRoom(room.id)}
+              onViewRoom={() => router.push(routes.renterRoom(room.id))}
+            />
+          ))}
+        </View>
+      ) : (
+        <View style={styles.empty}>
+          <View style={styles.emptyIcon}>
+            <Ionicons name="heart-outline" size={24} color={colors.primary} />
           </View>
-        ))}
+          <Text style={styles.emptyTitle}>No saved rooms yet</Text>
+          <Text style={styles.emptyText}>
+            Tap the heart on any room to build your shortlist.
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.footer}>
+        <Text style={styles.footerTitle}>Still looking?</Text>
+        <Text style={styles.footerText}>
+          Discover more rooms that fit your budget and must-haves.
+        </Text>
+        <View style={styles.footerAction}>
+          <PrimaryButton
+            label="Explore rooms"
+            icon="search"
+            onPress={() => router.push(routes.renterRooms)}
+            accessibilityLabel="Explore rooms"
+          />
+        </View>
       </View>
     </RenterScreen>
   );

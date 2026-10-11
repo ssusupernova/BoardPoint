@@ -1,59 +1,78 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radii, spacing } from '@/theme';
+import { card, cardSoft, colors, fonts, spacing } from '@/theme';
 
 export const styles = StyleSheet.create({
-  list: {
-    marginTop: spacing.xl,
-    gap: spacing.sm,
-  },
-  card: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    marginTop: spacing.lg,
   },
-  icon: {
-    width: 46,
-    height: 46,
-    borderRadius: radii.md,
-    backgroundColor: colors.peach,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  copy: {
-    marginLeft: spacing.md,
-    flex: 1,
-    flexShrink: 1,
-  },
-  title: {
-    fontFamily: fonts.bold,
+  count: {
+    fontFamily: fonts.semibold,
     fontSize: 15,
     color: colors.textPrimary,
   },
-  meta: {
-    marginTop: 2,
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    color: colors.textSecondary,
+  sort: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
-  price: {
-    marginTop: 3,
+  sortText: {
     fontFamily: fonts.semibold,
-    fontSize: 14,
+    fontSize: 12.5,
     color: colors.primary,
   },
-  matchPill: {
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 4,
-    borderRadius: radii.full,
-    backgroundColor: colors.selectedBg,
+  list: {
+    marginTop: spacing.lg,
+    gap: spacing.lg,
   },
-  matchText: {
-    fontFamily: fonts.semibold,
-    fontSize: 12,
-    color: colors.badgeText,
+  empty: {
+    marginTop: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.sm,
+    ...cardSoft,
+    paddingVertical: spacing.xxl,
+  },
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.peach,
+  },
+  emptyTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  emptyText: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  footer: {
+    marginTop: spacing.xl,
+    ...card,
+  },
+  footerTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  footerText: {
+    marginTop: 4,
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textSecondary,
+  },
+  footerAction: {
+    marginTop: spacing.md,
   },
 });

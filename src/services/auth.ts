@@ -50,6 +50,11 @@ export interface SignUpCredentials {
   email: string;
   password: string;
   role?: 'renter' | 'landlord';
+  /**
+   * When false, the account is created but no session is established, so the
+   * caller can send the user to the sign-in screen instead. Defaults to true.
+   */
+  establishSession?: boolean;
 }
 
 export interface AuthState {
@@ -223,7 +228,7 @@ export const authService: AuthService = {
     throw new AuthNotConfiguredError('Google sign-in');
   },
 
-  async signUp({ fullName, email, password, role }) {
+  async signUp({ fullName, email, password, role, establishSession = true }) {
     const name = fullName.trim();
     const mail = email.trim().toLowerCase();
     if (!name) throw new Error('Please enter your full name.');
@@ -251,8 +256,10 @@ export const authService: AuthService = {
     await saveAccount(account);
 
     const session = toSession(account);
-    await storageSet('session', JSON.stringify(session));
-    setAuthState({ session, hydrated: true });
+    if (establishSession) {
+      await storageSet('session', JSON.stringify(session));
+      setAuthState({ session, hydrated: true });
+    }
     return session;
   },
 

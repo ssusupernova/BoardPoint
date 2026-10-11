@@ -1,16 +1,10 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radii, shadows, spacing } from '@/theme';
+import { card, colors, fonts, spacing } from '@/theme';
 
 export const styles = StyleSheet.create({
-  card: {
+  hero: {
     marginTop: spacing.xl,
     alignItems: 'center',
-    borderRadius: radii.xl,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.xl,
-    ...shadows.card,
   },
   name: {
     marginTop: spacing.md,
@@ -19,102 +13,66 @@ export const styles = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: -0.2,
   },
-  username: {
-    marginTop: 2,
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.textSecondary,
+  verifyBadge: {
+    marginTop: spacing.sm,
   },
-  badgeWrap: {
-    marginTop: spacing.md,
+  memberSince: {
+    marginTop: spacing.sm,
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   section: {
     marginTop: spacing.xl,
   },
-  panel: {
-    borderRadius: radii.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-  },
-  accountRow: {
+  sectionHead: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.md,
   },
-  accountCopy: {
-    marginLeft: spacing.md,
-    flexShrink: 1,
+  panel: {
+    ...card,
+    paddingVertical: spacing.sm,
   },
-  accountValue: {
-    fontFamily: fonts.semibold,
-    fontSize: 15,
+  tenancyName: {
+    paddingTop: spacing.sm,
+    fontFamily: fonts.bold,
+    fontSize: 16,
     color: colors.textPrimary,
   },
-  accountKey: {
-    marginTop: 1,
-    fontFamily: fonts.semibold,
-    fontSize: 11,
+  tenancyUnit: {
+    marginTop: 3,
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 19,
     color: colors.textSecondary,
-    letterSpacing: 1,
   },
   divider: {
     height: 1,
     backgroundColor: colors.border,
-    marginVertical: spacing.md,
+    marginVertical: spacing.sm,
   },
-  list: {
-    gap: spacing.sm,
-  },
-  link: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderRadius: radii.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+  renewal: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.peach,
     padding: spacing.md,
   },
-  linkPressed: {
-    backgroundColor: colors.surfacePressed,
-  },
-  linkIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radii.md,
-    backgroundColor: colors.peach,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  linkLabel: {
-    flex: 1,
+  renewalTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textPrimary,
+  },
+  renewalText: {
+    marginTop: 4,
+    fontFamily: fonts.regular,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: colors.textSecondary,
   },
   signOut: {
     marginTop: spacing.xl,
-    height: 52,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  signOutPressed: {
-    backgroundColor: colors.surfacePressed,
-  },
-  signOutDisabled: {
-    opacity: 0.55,
-  },
-  signOutLabel: {
-    fontFamily: fonts.semibold,
-    fontSize: 15,
-    color: colors.textPrimary,
-    letterSpacing: 0.2,
   },
 });

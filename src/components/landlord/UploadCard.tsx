@@ -1,25 +1,44 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { landlordColors, radii, spacing } from '@/theme';
 
 type Props = {
   accessibilityLabel: string;
   onPress?: () => void;
+  /** Local URI of the picked document; renders a preview when present. */
+  imageUri?: string;
 };
 
-export function UploadCard({ accessibilityLabel, onPress }: Props) {
+export function UploadCard({ accessibilityLabel, onPress, imageUri }: Props) {
+  const hasImage = Boolean(imageUri);
+
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      accessibilityState={{ selected: hasImage }}
+      style={({ pressed }) => [
+        styles.card,
+        hasImage && styles.cardFilled,
+        pressed && styles.cardPressed,
+      ]}
     >
-      <View style={styles.iconWrap}>
-        <Ionicons name="cloud-upload-outline" size={30} color={landlordColors.iconStrong} />
-      </View>
-      <Text style={styles.title}>Upload a photo</Text>
-      <Text style={styles.hint}>Drag and drop photos here</Text>
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.preview}
+          contentFit="cover"
+          transition={150}
+        />
+      ) : (
+        <View style={styles.iconWrap}>
+          <Ionicons name="cloud-upload-outline" size={30} color={landlordColors.iconStrong} />
+        </View>
+      )}
+      <Text style={styles.title}>{hasImage ? 'Photo attached' : 'Upload a photo'}</Text>
+      <Text style={styles.hint}>{hasImage ? 'Tap to replace' : 'Drag and drop photos here'}</Text>
     </Pressable>
   );
 }
@@ -38,6 +57,15 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     backgroundColor: landlordColors.surfacePressed,
+  },
+  cardFilled: {
+    borderColor: landlordColors.primary,
+  },
+  preview: {
+    width: '100%',
+    height: 96,
+    marginBottom: spacing.sm,
+    borderRadius: radii.md,
   },
   iconWrap: {
     alignItems: 'center',

@@ -154,6 +154,8 @@ export default function SignUpScreen() {
 
             <View style={styles.actions}>
               <LoginButton
+                label="Register Account"
+                accessibilityLabel="Register your BoardPoint account"
                 onPress={() => void handleCreateAccount()}
                 loading={submitting}
                 disabled={googleLoading || !canSubmit}

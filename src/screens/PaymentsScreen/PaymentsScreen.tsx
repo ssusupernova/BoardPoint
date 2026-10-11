@@ -1,61 +1,133 @@
 import { Text, View } from 'react-native';
+import type { ComponentProps } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { PageHeader } from '@/components/common/PageHeader/PageHeader';
 import { RenterScreen } from '@/components/navigation/RenterScreen/RenterScreen';
 import { SectionHeader } from '@/components/renter/SectionHeader/SectionHeader';
-import { PaymentHistoryRow } from '@/components/renter/PaymentHistoryRow/PaymentHistoryRow';
-import { PaymentOverviewCard } from '@/components/renter/dashboard/PaymentOverviewCard/PaymentOverviewCard';
-import { renterPaymentHistory, renterPaymentOverview } from '@/data/mock';
+import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
+import { TransactionRow } from '@/components/renter/payments/TransactionRow/TransactionRow';
+import { PrimaryButton } from '@/components/ui/PrimaryButton/PrimaryButton';
+import {
+  renterBillLines,
+  renterCurrentBill,
+  renterTransactions,
+} from '@/data/mock';
 import { routes } from '@/routes';
+import { useSelectedPaymentMethod } from '@/services/paymentMethods';
 import { colors } from '@/theme';
+import { formatPeso } from '@/utils/currency';
+import { statusVariant } from '@/utils/status';
 import { styles } from './PaymentsScreen.styles';
-
-const METHODS = [
-  { icon: 'phone-portrait-outline', label: 'GCash', detail: 'Preferred e-wallet' },
-  { icon: 'business-outline', label: 'Bank transfer', detail: 'Landlord bank account' },
-  { icon: 'cash-outline', label: 'Cash', detail: 'Pay in person to your landlord' },
-] as const;
 
 export default function PaymentsScreen() {
   const router = useRouter();
+  const selectedMethod = useSelectedPaymentMethod();
+  const recent = renterTransactions.slice(0, 3);
 
   return (
-    <RenterScreen active="payments">
-      <PageHeader title="Payments" subtitle="History and payment methods" />
-
-      <View style={styles.section}>
-        <SectionHeader title="Outstanding" />
-        <PaymentOverviewCard
-          overview={renterPaymentOverview}
-          onViewBills={() => router.push(routes.renterBills)}
-        />
+    <RenterScreen
+      active="payments"
+      title="Payments"
+      subtitle="Clear bills. Easy payments. Every receipt."
+    >
+      <View style={styles.billCard}>
+        <View style={styles.billHead}>
+          <Text style={styles.billPeriod}>{renterCurrentBill.periodLabel}</Text>
+          <StatusBadge
+            text={renterCurrentBill.status}
+            variant={statusVariant(renterCurrentBill.status)}
+            dot
+          />
+        </View>
+        <Text style={styles.billTotal}>{formatPeso(renterCurrentBill.total)}</Text>
+        <Text style={styles.billNote}>{renterCurrentBill.note}</Text>
+        <View style={styles.dueRow}>
+          <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+          <Text style={styles.dueText}>{renterCurrentBill.nextDueLabel}</Text>
+        </View>
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Payment methods" />
-        <View style={styles.list}>
-          {METHODS.map((method) => (
-            <View key={method.label} style={styles.method}>
-              <View style={styles.methodIcon}>
-                <Ionicons name={method.icon} size={19} color={colors.primary} />
+        <SectionHeader
+          title="Bill breakdown"
+          actionLabel="Invoice"
+          onAction={() => router.push(routes.renterBills)}
+        />
+        <View style={styles.panel}>
+          {renterBillLines.map((line) => (
+            <View key={line.id} style={styles.billRow}>
+              <View style={styles.billCopy}>
+                <Text style={styles.billLabel}>{line.label}</Text>
+                <Text style={styles.billMeta}>{line.meta}</Text>
               </View>
-              <View style={styles.methodCopy}>
-                <Text style={styles.methodLabel}>{method.label}</Text>
-                <Text style={styles.methodDetail}>{method.detail}</Text>
-              </View>
+              <Text style={styles.billAmount}>{formatPeso(line.amount)}</Text>
             </View>
           ))}
+
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total to pay</Text>
+            <Text style={styles.totalAmount}>{formatPeso(renterCurrentBill.total)}</Text>
+          </View>
+
+          <Text style={styles.footnote}>No late fees or additional charges.</Text>
         </View>
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="History" />
-        <View style={styles.list}>
-          {renterPaymentHistory.map((record) => (
-            <PaymentHistoryRow key={record.id} record={record} />
+        <SectionHeader
+          title="Payment method"
+          actionLabel="Change"
+          onAction={() => router.push(routes.renterPaymentMethods)}
+        />
+        <View style={styles.panel}>
+          <View style={styles.methodRow}>
+            <View style={styles.methodIcon}>
+              <Ionicons
+                name={selectedMethod.icon as ComponentProps<typeof Ionicons>['name']}
+                size={19}
+                color={colors.primary}
+              />
+            </View>
+            <View style={styles.methodCopy}>
+              <Text style={styles.methodProvider}>{selectedMethod.provider}</Text>
+              <Text style={styles.methodAccount}>{selectedMethod.accountLabel}</Text>
+            </View>
+            <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+          </View>
+
+          <View style={styles.payAction}>
+            <PrimaryButton
+              label={`Pay ${formatPeso(renterCurrentBill.total)} with ${selectedMethod.provider}`}
+              icon="card"
+              onPress={() => router.push(routes.renterBills)}
+              accessibilityLabel={`Review and pay ${formatPeso(renterCurrentBill.total)}`}
+            />
+          </View>
+
+          <Text style={styles.methodNote}>
+            Pay both bills together. A receipt will be saved after your payment is confirmed.
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeader
+          title="Transaction history"
+          actionLabel="View all"
+          onAction={() => router.push(routes.renterHistory)}
+        />
+        <View style={styles.historyList}>
+          {recent.map((transaction) => (
+            <TransactionRow
+              key={transaction.id}
+              transaction={transaction}
+              onPress={() => router.push(routes.renterReceipt(transaction.id))}
+            />
           ))}
         </View>
+        <Text style={styles.historyFootnote}>
+          Showing your {recent.length} most recent payments
+        </Text>
       </View>
     </RenterScreen>
   );

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as ImagePicker from 'expo-image-picker';
 import { BrandHeader } from '@/components/landlord/BrandHeader';
 import { UploadCard } from '@/components/landlord/UploadCard';
 import { SubmitButton } from '@/components/landlord/SubmitButton';
@@ -20,6 +21,32 @@ import { styles } from './ListSpaceScreen.styles';
 export default function ListSpaceScreen() {
   const insets = useSafeAreaInsets();
   const [address, setAddress] = useState('Potol, Tambak Street');
+  const [idDocUri, setIdDocUri] = useState<string | null>(null);
+  const [ownershipDocUri, setOwnershipDocUri] = useState<string | null>(null);
+
+  const pickDocument = async (apply: (uri: string) => void) => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Photo access needed',
+        'Allow photo access to upload your verification documents.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      const uri = result.assets[0]?.uri;
+      if (uri) apply(uri);
+    }
+  };
+
+  const canSubmit = address.trim().length > 0 && Boolean(idDocUri) && Boolean(ownershipDocUri);
 
   // TODO(landlord): hand the uploaded documents to the verification service.
   const handleSubmit = () => {
@@ -89,23 +116,26 @@ export default function ListSpaceScreen() {
                 <Text style={styles.fieldLabel}>
                   Government ID / Verification Document
                 </Text>
-                {/* TODO(landlord): wire an image picker for document upload. */}
-                <UploadCard accessibilityLabel="Upload a photo of your government ID or verification document" />
+                <UploadCard
+                  accessibilityLabel="Upload a photo of your government ID or verification document"
+                  imageUri={idDocUri ?? undefined}
+                  onPress={() => void pickDocument(setIdDocUri)}
+                />
               </View>
 
               <View style={styles.group}>
                 <Text style={styles.fieldLabel}>
                   Proof of Ownership or Authorization
                 </Text>
-                {/* TODO(landlord): wire an image picker for document upload. */}
-                <UploadCard accessibilityLabel="Upload a photo proving ownership or authorization" />
+                <UploadCard
+                  accessibilityLabel="Upload a photo proving ownership or authorization"
+                  imageUri={ownershipDocUri ?? undefined}
+                  onPress={() => void pickDocument(setOwnershipDocUri)}
+                />
               </View>
 
               <View style={styles.actions}>
-                <SubmitButton
-                  onPress={handleSubmit}
-                  disabled={address.trim().length === 0}
-                />
+                <SubmitButton onPress={handleSubmit} disabled={!canSubmit} />
               </View>
             </View>
           </View>

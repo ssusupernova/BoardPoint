@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
 import type { MaintenanceTicket } from '@/data/mock';
@@ -26,13 +27,18 @@ export function MaintenanceCard({ ticket, onPress }: Props) {
             {ticket.title}
           </Text>
           <Text style={styles.updated}>
-            Updated {formatDisplayDate(ticket.updatedAt)}
+            {ticket.category ? `${ticket.category} · ` : ''}Updated{' '}
+            {formatDisplayDate(ticket.updatedAt)}
           </Text>
         </View>
         <StatusBadge text={ticket.status} variant={statusVariant(ticket.status)} dot />
       </View>
 
       <Text style={styles.detail}>{ticket.detail}</Text>
+
+      {ticket.photoUri ? (
+        <Image source={{ uri: ticket.photoUri }} style={styles.photo} contentFit="cover" transition={150} />
+      ) : null}
     </View>
   );
 

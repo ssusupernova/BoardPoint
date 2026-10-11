@@ -12,7 +12,6 @@ export const routes = {
   signIn: href('/'),
   chooseRole: href('/choose-role'),
   signUp: href('/sign-up'),
-  forgotPassword: href('/forgot-password'),
   renterDashboard: href('/renter'),
   landlordDashboard: href('/landlord'),
   preferences: href('/renter/preferences'),
@@ -24,6 +23,13 @@ export const routes = {
   renterProfile: href('/renter/profile'),
   renterMaintenance: href('/renter/maintenance'),
   renterReportIssue: href('/renter/maintenance/new'),
+  renterRooms: href('/renter/rooms'),
+  renterHistory: href('/renter/history'),
+  renterPaymentMethods: href('/renter/payment-methods'),
+  renterProfileEdit: href('/renter/profile-edit'),
+  renterRoom: (id: string) => href(`/renter/rooms/${id}`),
+  renterReceipt: (id: string) => href(`/renter/receipts/${id}`),
+  renterSetting: (section: string) => href(`/renter/settings/${section}`),
   landlordListSpace: href('/landlord/list-space'),
 } as const;
 

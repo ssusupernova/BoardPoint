@@ -62,4 +62,58 @@ export const styles = StyleSheet.create({
   submit: {
     marginTop: spacing.sm,
   },
+  photoPicker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: spacing.xl,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+  },
+  photoPickerPressed: {
+    backgroundColor: colors.surfacePressed,
+  },
+  photoPickerIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.peach,
+  },
+  photoPickerText: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  photoPickerHint: {
+    fontFamily: fonts.regular,
+    fontSize: 12.5,
+    color: colors.textSecondary,
+  },
+  photoWrap: {
+    borderRadius: radii.md,
+    overflow: 'hidden',
+  },
+  photo: {
+    width: '100%',
+    height: 200,
+  },
+  photoRemove: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(69, 55, 46, 0.72)',
+  },
+  photoRemovePressed: {
+    opacity: 0.7,
+  },
 });
