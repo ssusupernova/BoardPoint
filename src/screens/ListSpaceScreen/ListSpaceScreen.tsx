@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -9,12 +8,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import { BrandHeader } from '@/components/landlord/BrandHeader';
 import { UploadCard } from '@/components/landlord/UploadCard';
 import { SubmitButton } from '@/components/landlord/SubmitButton';
+import { routes } from '@/routes';
 import { landlordColors } from '@/theme';
 import { styles } from './ListSpaceScreen.styles';
 
@@ -48,12 +49,9 @@ export default function ListSpaceScreen() {
 
   const canSubmit = address.trim().length > 0 && Boolean(idDocUri) && Boolean(ownershipDocUri);
 
-  // TODO(landlord): hand the uploaded documents to the verification service.
+  // TODO(landlord): replace with a real verification flow once an admin page exists.
   const handleSubmit = () => {
-    Alert.alert(
-      'Submitted for Verification',
-      'Your documents are under review. We will let you know once your listing is approved.'
-    );
+    router.replace(routes.landlordDashboard);
   };
 
   return (
@@ -132,6 +130,13 @@ export default function ListSpaceScreen() {
                   imageUri={ownershipDocUri ?? undefined}
                   onPress={() => void pickDocument(setOwnershipDocUri)}
                 />
+              </View>
+
+              <View style={styles.group}>
+                <Text style={styles.subtitle}>
+                  Your account is pending verification. Submit it for review to
+                  start listing your space.
+                </Text>
               </View>
 
               <View style={styles.actions}>
