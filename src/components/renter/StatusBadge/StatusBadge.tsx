@@ -1,19 +1,21 @@
-import {
-  Text,
-  View
-} from 'react-native';
-
-import { styles } from './StatusBadge.styles';
+import { Text, View } from 'react-native';
+import type { StatusVariant } from '@/utils/status';
+import { styles, variantStyles } from './StatusBadge.styles';
 
 type Props = {
   text: string;
+  variant?: StatusVariant;
+  /** Render a small leading status dot. */
+  dot?: boolean;
 };
 
-export function StatusBadge({ text }: Props) {
+/** Pill showing a record's status (Active, Unpaid, Scheduled, Completed…). */
+export function StatusBadge({ text, variant = 'warning', dot = false }: Props) {
+  const v = variantStyles[variant];
   return (
-    <View style={styles.badge} accessibilityRole="text">
-      <Text style={styles.text}>{text}</Text>
+    <View style={[styles.badge, { backgroundColor: v.bg }]} accessibilityRole="text">
+      {dot ? <View style={[styles.dot, { backgroundColor: v.text }]} /> : null}
+      <Text style={[styles.text, { color: v.text }]}>{text}</Text>
     </View>
   );
 }
-

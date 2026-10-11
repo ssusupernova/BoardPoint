@@ -10,6 +10,10 @@ export const MONTH_ABBRS = [
 
 export const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 
+export const WEEKDAY_NAMES = [
+  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+] as const;
+
 /** ISO date string (yyyy-mm-dd, local time) for a Date. */
 export function toISODate(date: Date): string {
   const y = date.getFullYear();
@@ -25,6 +29,14 @@ export function parseISODate(iso: string | null): Date | null {
   if (!match) return null;
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** "SUNDAY, OCTOBER 11, 2026" for a Date; empty when invalid. */
+export function formatLongDate(date: Date): string {
+  if (Number.isNaN(date.getTime())) return '';
+  return `${WEEKDAY_NAMES[date.getDay()].toUpperCase()}, ${MONTH_NAMES[
+    date.getMonth()
+  ].toUpperCase()} ${date.getDate()}, ${date.getFullYear()}`;
 }
 
 /** "15 Oct 2026" for display; falls back to the raw string. */

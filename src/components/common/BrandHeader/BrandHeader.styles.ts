@@ -1,15 +1,17 @@
 import { StyleSheet } from 'react-native';
-import { colors, spacing, radii } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 export const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
   logo: {
-    width: 48,
-    height: 48,
-    borderRadius: radii.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -19,16 +21,17 @@ export const styles = StyleSheet.create({
     flexShrink: 1,
   },
   brand: {
-    fontSize: 26,
     fontWeight: '800',
     color: colors.textPrimary,
     letterSpacing: -0.4,
   },
   subtitle: {
     marginTop: 2,
-    fontSize: 11,
     fontWeight: '700',
     color: colors.textSecondary,
-    letterSpacing: 1.6,
+  },
+  trailing: {
+    marginLeft: 'auto',
+    paddingLeft: spacing.md,
   },
 });

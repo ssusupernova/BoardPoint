@@ -1,207 +1,43 @@
 import { StyleSheet } from 'react-native';
-import { colors, radii, screenScaffold, spacing } from '@/theme';
+import { colors, fonts, spacing } from '@/theme';
 
 export const styles = StyleSheet.create({
-  ...screenScaffold,
-  card: {
+  eyebrow: {
     marginTop: spacing.xl,
-    padding: spacing.lg,
-    borderRadius: radii.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    fontFamily: fonts.semibold,
+    fontSize: 12,
+    color: colors.textSecondary,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
   },
-  greeting: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: -0.3,
+  date: {
+    marginTop: 4,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.textSecondary,
+    letterSpacing: 0.6,
   },
-  subtitle: {
+  welcome: {
     marginTop: spacing.sm,
+    fontFamily: fonts.extrabold,
+    fontSize: 27,
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  welcomeSub: {
+    marginTop: 6,
+    fontFamily: fonts.regular,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textSecondary,
   },
-  sectionLabel: {
+  section: {
     marginTop: spacing.xl,
-    marginBottom: -spacing.xs,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 1.4,
   },
-  stats: {
-    marginTop: spacing.lg,
-    flexDirection: 'row',
+  list: {
     gap: spacing.sm,
   },
-  stat: {
-    flex: 1,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.full,
-    backgroundColor: colors.surfacePressed,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: {
-    marginTop: spacing.sm,
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: -0.3,
-  },
-  statKey: {
-    marginTop: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  preferencesCta: {
-    marginTop: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.primary,
-    gap: spacing.md,
-  },
-  preferencesCtaPressed: {
-    backgroundColor: colors.primaryPressed,
-  },
-  preferencesIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  preferencesCopy: {
-    flex: 1,
-    flexShrink: 1,
-  },
-  preferencesTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.onPrimary,
-  },
-  preferencesDetail: {
-    marginTop: 2,
-    fontSize: 13,
-    lineHeight: 18,
-    color: 'rgba(255, 255, 255, 0.88)',
-  },
-  rooms: {
+  maintenanceAction: {
     marginTop: spacing.md,
-    gap: spacing.sm,
-  },
-  room: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  roomIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.md,
-    backgroundColor: colors.surfacePressed,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roomCopy: {
-    marginLeft: spacing.md,
-    flex: 1,
-    flexShrink: 1,
-  },
-  roomTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  roomMeta: {
-    marginTop: 2,
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  matchPill: {
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 4,
-    borderRadius: radii.full,
-    backgroundColor: colors.selectedBg,
-  },
-  matchPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.badgeText,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  accountCopy: {
-    marginLeft: spacing.md,
-    flexShrink: 1,
-  },
-  accountValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  accountKey: {
-    marginTop: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 1,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.md,
-  },
-  signOut: {
-    marginTop: spacing.xl,
-    height: 52,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  signOutPressed: {
-    backgroundColor: colors.surfacePressed,
-  },
-  signOutDisabled: {
-    opacity: 0.55,
-  },
-  signOutLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: 0.2,
-  },
-  price: {
-    marginTop: 4,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.badgeText,
   },
 });

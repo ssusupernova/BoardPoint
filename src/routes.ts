@@ -1,14 +1,30 @@
 import type { Href } from 'expo-router';
 
+/**
+ * Build a typed href from a plain path.
+ *
+ * Casting through `unknown` keeps this map independent of the generated route
+ * union (`.expo/types/router.d.ts`), which is produced by the dev server.
+ */
+const href = (path: string): Href => path as unknown as Href;
+
 export const routes = {
-  signIn: '/' as Href,
-  chooseRole: '/choose-role' as Href,
-  signUp: '/sign-up' as Href,
-  forgotPassword: '/forgot-password' as Href,
-  renterDashboard: '/renter',
-  landlordDashboard: '/landlord',
-  preferences: '/renter/preferences',
-  landlordListSpace: '/landlord/list-space' as Href,
+  signIn: href('/'),
+  chooseRole: href('/choose-role'),
+  signUp: href('/sign-up'),
+  forgotPassword: href('/forgot-password'),
+  renterDashboard: href('/renter'),
+  landlordDashboard: href('/landlord'),
+  preferences: href('/renter/preferences'),
+  renterTenancy: href('/renter/tenancy'),
+  renterBills: href('/renter/bills'),
+  renterSaved: href('/renter/saved'),
+  renterAlerts: href('/renter/alerts'),
+  renterPayments: href('/renter/payments'),
+  renterProfile: href('/renter/profile'),
+  renterMaintenance: href('/renter/maintenance'),
+  renterReportIssue: href('/renter/maintenance/new'),
+  landlordListSpace: href('/landlord/list-space'),
 } as const;
 
 export type DashboardRole = 'renter' | 'landlord';
