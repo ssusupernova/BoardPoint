@@ -23,7 +23,7 @@ import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton/GoogleLog
 import { SignupPrompt } from '@/components/auth/SignupPrompt/SignupPrompt';
 import { authService } from '@/services/auth';
 import { colors } from '@/theme';
-import { routes } from '@/routes';
+import { routes, dashboardForRole } from '@/routes';
 import { styles } from './SignUpScreen.styles';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -72,13 +72,13 @@ export default function SignUpScreen() {
     setErrorMessage(null);
     setSubmitting(true);
     try {
-      await authService.signUp({
+      const session = await authService.signUp({
         fullName: fullName.trim(),
         email: email.trim(),
         password,
         role,
       });
-      router.replace(routes.home);
+      router.replace(dashboardForRole(session.user.role));
     } catch (err) {
       Alert.alert('Unable to create account', toErrorMessage(err));
     } finally {
@@ -91,7 +91,7 @@ export default function SignUpScreen() {
     setGoogleLoading(true);
     try {
       await authService.signInWithGoogle();
-      router.replace(routes.home);
+      router.replace(dashboardForRole(undefined));
     } catch (err) {
       Alert.alert('Unable to continue with Google', toErrorMessage(err));
     } finally {

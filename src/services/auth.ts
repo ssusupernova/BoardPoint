@@ -170,7 +170,13 @@ async function restoreSession(): Promise<void> {
   let session: AuthSession | null = null;
   try {
     const raw = await storageGet('session');
-    if (raw) session = JSON.parse(raw) as AuthSession;
+    if (raw) {
+      const parsed = JSON.parse(raw) as AuthSession;
+      session = {
+        ...parsed,
+        user: { ...parsed.user, role: parsed.user.role ?? 'renter' },
+      };
+    }
   } catch {
     session = null;
   }

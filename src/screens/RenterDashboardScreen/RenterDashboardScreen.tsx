@@ -1,29 +1,24 @@
-import {
-  useState } from 'react';
-import { Pressable,
-  ScrollView,
-  Text,
-  View
-} from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BrandHeader } from '@/components/auth/BrandHeader/BrandHeader';
-import { authService,
-  useAuthSession } from '@/services/auth';
+import { authService, useAuthSession } from '@/services/auth';
+import { renterMockRooms } from '@/data/mock';
 import { routes } from '@/routes';
-import { colors
-} from '@/theme';
-import { styles } from './HomeScreen.styles';
+import { colors } from '@/theme';
+import { formatNumber } from '@/utils/date';
+import { styles } from './RenterDashboardScreen.styles';
 
-const HIGHLIGHTS = [
-  { icon: 'business-outline', title: 'Properties', detail: 'Track buildings, units and occupancy.' },
-  { icon: 'people-outline', title: 'Tenants', detail: 'Keep leases and contacts in one place.' },
-  { icon: 'card-outline', title: 'Payments', detail: 'See rent collection at a glance.' },
+const STATS = [
+  { icon: 'grid-outline', value: '24', key: 'Matches' },
+  { icon: 'bookmark-outline', value: '6', key: 'Saved' },
+  { icon: 'calendar-outline', value: '2', key: 'Tours' },
 ] as const;
 
-export default function HomeScreen() {
+export default function RenterDashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuthSession();
@@ -62,39 +57,60 @@ export default function HomeScreen() {
           <View style={styles.card}>
             <Text style={styles.greeting}>Welcome back, {firstName}.</Text>
             <Text style={styles.subtitle}>
-              You’re signed in to BoardPoint. Your rental operations workspace is ready below.
+              Here are rooms we matched against your preferences. Update your checklist to
+              see more relevant places.
             </Text>
+          </View>
+
+          <View style={styles.stats}>
+            {STATS.map((stat) => (
+              <View key={stat.key} style={styles.stat}>
+                <View style={styles.statIcon}>
+                  <Ionicons name={stat.icon} size={16} color={colors.primary} />
+                </View>
+                <Text style={styles.statValue}>{stat.value}</Text>
+                <Text style={styles.statKey}>{stat.key}</Text>
+              </View>
+            ))}
           </View>
 
           <Pressable
             onPress={() => router.push(routes.preferences)}
             accessibilityRole="button"
-            accessibilityLabel="Set your room preferences"
+            accessibilityLabel="Update your room preferences"
             style={({ pressed }) => [styles.preferencesCta, pressed && styles.preferencesCtaPressed]}
           >
             <View style={styles.preferencesIcon}>
               <Ionicons name="options-outline" size={20} color={colors.onPrimary} />
             </View>
             <View style={styles.preferencesCopy}>
-              <Text style={styles.preferencesTitle}>Set your room preferences</Text>
+              <Text style={styles.preferencesTitle}>Update room preferences</Text>
               <Text style={styles.preferencesDetail}>
-                Tell us what you need — we&apos;ll match rooms against your checklist.
+                Refine your checklist to get better room matches.
               </Text>
             </View>
             <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} />
           </Pressable>
 
-          <Text style={styles.sectionLabel}>YOUR WORKSPACE</Text>
+          <Text style={styles.sectionLabel}>MATCHED ROOMS</Text>
 
-          <View style={styles.highlights}>
-            {HIGHLIGHTS.map((item) => (
-              <View key={item.title} style={styles.highlight}>
-                <View style={styles.highlightIcon}>
-                  <Ionicons name={item.icon} size={20} color={colors.primary} />
+          <View style={styles.rooms}>
+            {renterMockRooms.slice(0, 3).map((room) => (
+              <View key={room.id} style={styles.room}>
+                <View style={styles.roomIcon}>
+                  <Ionicons name="bed-outline" size={22} color={colors.primary} />
                 </View>
-                <View style={styles.highlightCopy}>
-                  <Text style={styles.highlightTitle}>{item.title}</Text>
-                  <Text style={styles.highlightDetail}>{item.detail}</Text>
+                <View style={styles.roomCopy}>
+                  <Text style={styles.roomTitle} numberOfLines={1}>
+                    {room.title}
+                  </Text>
+                  <Text style={styles.roomMeta} numberOfLines={1}>
+                    {room.area} · {room.distanceKm} km away
+                  </Text>
+                  <Text style={styles.price}>₱{formatNumber(String(room.price))}/mo</Text>
+                </View>
+                <View style={styles.matchPill}>
+                  <Text style={styles.matchPillText}>{room.matchPercent}% match</Text>
                 </View>
               </View>
             ))}
@@ -150,5 +166,3 @@ export default function HomeScreen() {
     </View>
   );
 }
-
-

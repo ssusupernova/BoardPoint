@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, spacing, radii, screenScaffold } from '@/theme';
+import { colors, radii, screenScaffold, spacing } from '@/theme';
 
 export const styles = StyleSheet.create({
   ...screenScaffold,
@@ -30,6 +30,42 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textSecondary,
     letterSpacing: 1.4,
+  },
+  stats: {
+    marginTop: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  stat: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfacePressed,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValue: {
+    marginTop: spacing.sm,
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  statKey: {
+    marginTop: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   preferencesCta: {
     marginTop: spacing.lg,
@@ -66,11 +102,11 @@ export const styles = StyleSheet.create({
     lineHeight: 18,
     color: 'rgba(255, 255, 255, 0.88)',
   },
-  highlights: {
+  rooms: {
     marginTop: spacing.md,
     gap: spacing.sm,
   },
-  highlight: {
+  room: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
@@ -79,27 +115,39 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  highlightIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.full,
+  roomIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
     backgroundColor: colors.surfacePressed,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  highlightCopy: {
+  roomCopy: {
     marginLeft: spacing.md,
+    flex: 1,
     flexShrink: 1,
   },
-  highlightTitle: {
+  roomTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  highlightDetail: {
+  roomMeta: {
     marginTop: 2,
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  matchPill: {
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: radii.full,
+    backgroundColor: colors.selectedBg,
+  },
+  matchPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.badgeText,
   },
   accountRow: {
     flexDirection: 'row',
@@ -149,5 +197,11 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: 0.2,
+  },
+  price: {
+    marginTop: 4,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.badgeText,
   },
 });

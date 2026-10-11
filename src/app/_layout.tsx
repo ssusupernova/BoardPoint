@@ -30,6 +30,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { session } = useAuthSession();
+  const role = session?.user.role;
 
   return (
     <Stack
@@ -38,18 +39,19 @@ function RootNavigator() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Protected guard={!!session}>
-        <Stack.Screen name="home" />
-        <Stack.Screen name="renter/preferences" />
-      </Stack.Protected>
-
       <Stack.Protected guard={!session}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/choose-role" />
         <Stack.Screen name="(auth)/sign-up" />
       </Stack.Protected>
 
-      <Stack.Screen name="landlord/list-space" />
+      <Stack.Protected guard={!!session && role === 'renter'}>
+        <Stack.Screen name="renter" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={!!session && role === 'landlord'}>
+        <Stack.Screen name="landlord" />
+      </Stack.Protected>
     </Stack>
   );
 }

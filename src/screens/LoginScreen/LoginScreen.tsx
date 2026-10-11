@@ -22,7 +22,7 @@ import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton/GoogleLog
 import { SignupPrompt } from '@/components/auth/SignupPrompt/SignupPrompt';
 import { authService } from '@/services/auth';
 
-import { routes } from '@/routes';
+import { routes, dashboardForRole } from '@/routes';
 import { styles } from './LoginScreen.styles';
 
 function toErrorMessage(err: unknown): string {
@@ -46,12 +46,12 @@ export default function LoginScreen() {
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      await authService.signIn({
+      const session = await authService.signIn({
         identifier: identifier.trim(),
         password,
         rememberMe,
       });
-      router.replace(routes.home);
+      router.replace(dashboardForRole(session.user.role));
     } catch (err) {
       Alert.alert('Unable to sign in', toErrorMessage(err));
     } finally {
