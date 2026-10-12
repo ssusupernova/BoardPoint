@@ -477,8 +477,7 @@ export const dashboardStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-
-  // Rental requests
+// Rental requests
   requestCard: {
     backgroundColor: LANDLORD_THEME.surface,
     borderRadius: 14,

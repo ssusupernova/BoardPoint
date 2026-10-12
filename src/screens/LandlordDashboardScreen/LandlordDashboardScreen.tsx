@@ -7,7 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { BrandHeader } from '@/components/landlord/BrandHeader';
 import { authService, useAuthSession } from '@/services/auth';
 import { landlordMockListings } from '@/data/mock';
-import { routes } from '@/routes';
+import { routes, landlordRoomForm, landlordRoomList, landlordTenantList } from '@/routes';
 import { landlordColors } from '@/theme';
 import { formatNumber } from '@/utils/date';
 import { styles } from './LandlordDashboardScreen.styles';
@@ -81,7 +81,7 @@ export default function LandlordDashboardScreen() {
           </View>
 
           <Pressable
-            onPress={() => router.push(routes.landlordListSpace)}
+            onPress={() => router.push(routes.landlordAddProperty)}
             accessibilityRole="button"
             accessibilityLabel="List a new room"
             style={({ pressed }) => [styles.listCta, pressed && styles.listCtaPressed]}
@@ -97,6 +97,48 @@ export default function LandlordDashboardScreen() {
             </View>
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </Pressable>
+
+          <View style={styles.roomActions}>
+            <Pressable
+              onPress={() => router.push(landlordTenantList())}
+              accessibilityRole="button"
+              accessibilityLabel="Manage tenants"
+              style={({ pressed }) => [
+                styles.roomAction,
+                pressed && styles.roomActionPressed,
+              ]}
+            >
+              <Ionicons name="people-outline" size={17} color="#C17D3F" />
+              <Text style={styles.roomActionText}>Tenants</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(landlordRoomList())}
+              accessibilityRole="button"
+              accessibilityLabel="Manage rooms"
+              style={({ pressed }) => [
+                styles.roomAction,
+                pressed && styles.roomActionPressed,
+              ]}
+            >
+              <Ionicons name="bed-outline" size={17} color="#C17D3F" />
+              <Text style={styles.roomActionText}>Rooms</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(landlordRoomForm())}
+              accessibilityRole="button"
+              accessibilityLabel="Add a room"
+              style={({ pressed }) => [
+                styles.roomAction,
+                styles.roomActionPrimary,
+                pressed && styles.roomActionPressed,
+              ]}
+            >
+              <Ionicons name="add" size={17} color="#FFFFFF" />
+              <Text style={[styles.roomActionText, styles.roomActionTextPrimary]}>
+                Add Room
+              </Text>
+            </Pressable>
+          </View>
 
           <Text style={styles.sectionLabel}>YOUR LISTINGS</Text>
 

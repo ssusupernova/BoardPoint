@@ -3,7 +3,7 @@ import { router, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { routes } from '@/routes';
-import { styles, LANDLORD_THEME } from '@/app/landlord/style';
+import { styles, LANDLORD_THEME } from '@/styles/landlord';
 
 export type LandlordTab = 'overview' | 'properties' | 'maintenance' | 'leases' | 'profile';
 

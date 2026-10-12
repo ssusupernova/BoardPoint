@@ -5,15 +5,30 @@
  * on-device (SecureStore / localStorage). A tiny observable store lets the
  * alerts screen and the bottom-nav badge stay in sync. Swap the persistence for
  * a backend call later; the public API stays the same.
+ *
+ * `pushNotification` lets other services (e.g. the rental-request bridge in
+ * `landlordData`) add renter alerts at runtime. Pushed items persist under
+ * `notifications.pushed` so they survive a restart; read state keeps using the
+ * shared `notifications.read` id list for both seeds and pushed items.
  */
 
 import { useSyncExternalStore } from 'react';
 import { renterNotifications, type AppNotification } from '@/data/mock';
+import type { NotificationCategory } from '@/data/types';
 import { storageGet, storageSet } from '@/services/storage';
+import { MONTH_ABBRS } from '@/utils/date';
+import * as Crypto from 'expo-crypto';
 
 const STORAGE_KEY = 'notifications.read';
+const PUSHED_KEY = 'notifications.pushed';
 
-let notifications: AppNotification[] = renterNotifications.map((item) => ({ ...item }));
+type PushedNotification = AppNotification & { createdAt: string };
+
+const seeds: AppNotification[] = renterNotifications.map((item) => ({ ...item }));
+
+let notifications: AppNotification[] = seeds;
+let pushed: PushedNotification[] = [];
+let readIds = new Set<string>();
 let hydrated = false;
 const listeners = new Set<() => void>();
 
@@ -47,25 +62,55 @@ export function useUnreadCount(): number {
 }
 
 async function persistReadIds(): Promise<void> {
-  const readIds = notifications.filter((item) => item.read).map((item) => item.id);
-  await storageSet(STORAGE_KEY, JSON.stringify(readIds));
+  const ids = notifications.filter((item) => item.read).map((item) => item.id);
+  await storageSet(STORAGE_KEY, JSON.stringify(ids));
+}
+
+/** Rebuild the visible list from pushed items (newest first) plus the seeds. */
+function rebuild(): AppNotification[] {
+  const pushedItems: AppNotification[] = pushed.map((item) => ({
+    ...item,
+    day: new Date(item.createdAt).toDateString() === new Date().toDateString()
+      ? 'today'
+      : 'earlier',
+    read: readIds.has(item.id),
+  }));
+  return [...pushedItems, ...seeds.map((item) => ({ ...item, read: item.read || readIds.has(item.id) }))];
+}
+
+/** Merge stored pushed items with any pushed while hydrating was in flight. */
+function loadPushed(raw: string | null): void {
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw) as PushedNotification[];
+    if (!Array.isArray(parsed)) return;
+    const known = new Map(pushed.map((item) => [item.id, item] as const));
+    for (const item of parsed) {
+      if (typeof item?.id === 'string' && !known.has(item.id)) known.set(item.id, item);
+    }
+    pushed = [...known.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  } catch {
+    // Ignore malformed cache and keep anything pushed at runtime.
+  }
 }
 
 async function hydrate(): Promise<void> {
   if (hydrated) return;
   hydrated = true;
-  const raw = await storageGet(STORAGE_KEY);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw) as string[];
-    if (!Array.isArray(parsed)) return;
-    const readIds = new Set(parsed);
-    setNotifications(
-      notifications.map((item) => ({ ...item, read: item.read || readIds.has(item.id) }))
-    );
-  } catch {
-    // Ignore malformed cache and keep the seeded read state.
+  const [readRaw, pushedRaw] = await Promise.all([
+    storageGet(STORAGE_KEY),
+    storageGet(PUSHED_KEY),
+  ]);
+  if (readRaw) {
+    try {
+      const parsed = JSON.parse(readRaw) as string[];
+      if (Array.isArray(parsed)) readIds = new Set(parsed);
+    } catch {
+      // Ignore malformed cache and keep the seeded read state.
+    }
   }
+  loadPushed(pushedRaw);
+  setNotifications(rebuild());
 }
 
 void hydrate();
@@ -79,4 +124,40 @@ export async function markNotificationRead(id: string): Promise<void> {
   if (notifications.every((item) => item.id !== id || item.read)) return;
   setNotifications(notifications.map((item) => (item.id === id ? { ...item, read: true } : item)));
   await persistReadIds();
+}
+
+export interface PushNotificationInput {
+  category: NotificationCategory;
+  title: string;
+  description: string;
+  statusLabel?: string;
+}
+
+function clockLabel(date: Date): string {
+  const hour12 = date.getHours() % 12 || 12;
+  const minute = `${date.getMinutes()}`.padStart(2, '0');
+  const suffix = date.getHours() < 12 ? 'AM' : 'PM';
+  return `${hour12}:${minute} ${suffix}`;
+}
+
+/**
+ * Append a renter alert at the top of the timeline and persist it. Best-effort
+ * persistence: storage failures never throw back into the caller.
+ */
+export function pushNotification(input: PushNotificationInput): void {
+  const now = new Date();
+  const item: PushedNotification = {
+    id: Crypto.randomUUID(),
+    category: input.category,
+    day: 'today',
+    timestampLabel: `${now.getDate()} ${MONTH_ABBRS[now.getMonth()]} · ${clockLabel(now)}`,
+    title: input.title,
+    description: input.description,
+    statusLabel: input.statusLabel,
+    read: false,
+    createdAt: now.toISOString(),
+  };
+  pushed = [item, ...pushed];
+  setNotifications([item, ...notifications]);
+  void storageSet(PUSHED_KEY, JSON.stringify(pushed)).catch(() => undefined);
 }

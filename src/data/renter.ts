@@ -53,12 +53,8 @@ export interface RenterListing extends RenterRoom {
 export const renterMockRooms: RenterListing[] = [
   {
     id: 'room-city-garden',
-<<<<<<< HEAD
     title: 'City Garden · Room 5',
-=======
-    title: 'City Garden Rooms',
     propertyName: 'City Garden Residences',
->>>>>>> momay
     area: 'Sta. Cruz, Dapitan City',
     roomType: 'Private room',
     price: 3200,
@@ -73,23 +69,16 @@ export const renterMockRooms: RenterListing[] = [
     availabilityLabel: 'Available now',
     isFavorite: true,
     category: 'Boarding House',
-<<<<<<< HEAD
     landlordId: 'landlord-1',
     propertyId: 'prop-2',
     landlordRoomId: 'p2-r5',
     available: true,
-=======
->>>>>>> momay
     featured: true,
   },
   {
     id: 'room-north-haven',
-<<<<<<< HEAD
     title: 'North Haven · Room 6',
-=======
-    title: 'North Haven Boarding House',
     propertyName: 'North Haven Boarding House',
->>>>>>> momay
     area: 'Tambak, Dapitan City',
     roomType: 'Private room',
     price: 2800,
@@ -104,7 +93,6 @@ export const renterMockRooms: RenterListing[] = [
     availabilityLabel: 'Available by 15 Oct',
     isFavorite: true,
     category: 'Boarding House',
-<<<<<<< HEAD
     landlordId: 'landlord-1',
     propertyId: 'prop-3',
     landlordRoomId: 'p3-r6',
@@ -113,15 +101,8 @@ export const renterMockRooms: RenterListing[] = [
   {
     id: 'room-casa-cuarto',
     title: 'Casa Dela Cruz · Room 4',
+    propertyName: 'Casa Dela Cruz',
     area: 'Sta. Cruz, Dapitan City',
-=======
-  },
-  {
-    id: 'room-studio-university',
-    title: 'Studio Unit near University',
-    propertyName: 'La Torre Apartelle',
-    area: 'Poblacion, La Torre St.',
->>>>>>> momay
     roomType: 'Private room',
     price: 2500,
     distanceKm: 0.6,
@@ -143,6 +124,7 @@ export const renterMockRooms: RenterListing[] = [
   {
     id: 'room-sunrise-family',
     title: 'Sunrise Village · Family Room',
+    propertyName: 'Sunrise Village Homes',
     area: 'Poblacion, Dapitan City',
     roomType: 'Private room',
     price: 4800,
@@ -165,6 +147,7 @@ export const renterMockRooms: RenterListing[] = [
   {
     id: 'room-sunrise-twin',
     title: 'Sunrise Village · Twin Room',
+    propertyName: 'Sunrise Village Homes',
     area: 'Poblacion, Dapitan City',
     roomType: 'Private room',
     price: 4200,
@@ -178,7 +161,6 @@ export const renterMockRooms: RenterListing[] = [
     amenities: ['Furnished', 'Non-smoking'],
     availabilityLabel: 'Available by 01 Nov',
     isFavorite: false,
-<<<<<<< HEAD
     category: 'Village House',
     landlordId: 'landlord-1',
     propertyId: 'prop-4',
@@ -188,14 +170,7 @@ export const renterMockRooms: RenterListing[] = [
   {
     id: 'room-palm-studio',
     title: 'Palm Condo · Studio',
-=======
-    category: 'Apartment',
-  },
-  {
-    id: 'room-aircon-dorm',
-    title: 'Aircon Dormitory Bed',
-    propertyName: 'San Roque Dormitory',
->>>>>>> momay
+    propertyName: 'Palm Street Condominium',
     area: 'San Roque, Dapitan City',
     roomType: 'Private room',
     price: 5500,
@@ -209,7 +184,6 @@ export const renterMockRooms: RenterListing[] = [
     amenities: ['Furnished', 'Laundry area', 'Electricity included', 'No curfew'],
     availabilityLabel: 'Available now',
     isFavorite: false,
-<<<<<<< HEAD
     category: 'Condo',
     landlordId: 'landlord-1',
     propertyId: 'prop-5',
@@ -219,6 +193,7 @@ export const renterMockRooms: RenterListing[] = [
   {
     id: 'room-palm-onebr',
     title: 'Palm Condo · One-Bedroom',
+    propertyName: 'Palm Street Condominium',
     area: 'San Roque, Dapitan City',
     roomType: 'Private room',
     price: 6000,
@@ -241,6 +216,7 @@ export const renterMockRooms: RenterListing[] = [
   {
     id: 'room-dahlia-studio',
     title: 'Dahlia Apartments · Studio',
+    propertyName: 'Dahlia Heights',
     area: 'Providencia, Dapitan City',
     roomType: 'Private room',
     price: 4500,
@@ -263,6 +239,7 @@ export const renterMockRooms: RenterListing[] = [
   {
     id: 'room-dahlia-loft',
     title: 'Dahlia Apartments · Loft Bed',
+    propertyName: 'Dahlia Heights',
     area: 'Providencia, Dapitan City',
     roomType: 'Shared room',
     price: 5200,
@@ -281,84 +258,6 @@ export const renterMockRooms: RenterListing[] = [
     propertyId: 'prop-6',
     landlordRoomId: 'p6-r2',
     available: true,
-=======
-    category: 'Boarding House',
-  },
-  {
-    id: 'room-sunrise-family',
-    title: 'Sunrise Village Family Room',
-    propertyName: 'Sunrise Village Homes',
-    area: 'Poblacion, Dapitan City',
-    roomType: 'Private room',
-    price: 4800,
-    distanceKm: 1.8,
-    distanceFromLabel: 'Sta. Cruz',
-    matchPercent: 90,
-    roomLabel: 'Family Room',
-    privacy: 'Private',
-    occupancy: '4 persons',
-    featureBadges: ['Wi-Fi', 'Private bathroom'],
-    amenities: ['Furnished', 'Kitchen access', 'Water included', 'Non-smoking'],
-    availabilityLabel: 'Available now',
-    isFavorite: false,
-    category: 'Village House',
-  },
-  {
-    id: 'room-sunrise-twin',
-    title: 'Sunrise Village Twin Room',
-    propertyName: 'Sunrise Village Homes',
-    area: 'Poblacion, Dapitan City',
-    roomType: 'Private room',
-    price: 4200,
-    distanceKm: 1.8,
-    distanceFromLabel: 'Sta. Cruz',
-    matchPercent: 86,
-    roomLabel: 'Twin Room',
-    privacy: 'Private',
-    occupancy: '2 persons',
-    featureBadges: ['Wi-Fi', 'Private bathroom'],
-    amenities: ['Furnished', 'Water included', 'No curfew', 'Non-smoking'],
-    availabilityLabel: 'Available now',
-    isFavorite: false,
-    category: 'Village House',
-  },
-  {
-    id: 'room-palm-studio',
-    title: 'Palm Condo Studio',
-    propertyName: 'Palm Street Condominium',
-    area: 'San Roque, Dapitan City',
-    roomType: 'Private room',
-    price: 5500,
-    distanceKm: 2.3,
-    distanceFromLabel: 'Sta. Cruz',
-    matchPercent: 84,
-    roomLabel: 'Studio',
-    privacy: 'Private',
-    occupancy: '2 persons',
-    featureBadges: ['Wi-Fi', 'Air conditioning'],
-    amenities: ['Furnished', 'Private bathroom', 'Electricity included', 'Non-smoking'],
-    availabilityLabel: 'Available by 20 Oct',
-    isFavorite: false,
-    category: 'Condo',
-  },
-  {
-    id: 'room-dahlia-loft',
-    title: 'Dahlia Apartments Loft',
-    propertyName: 'Dahlia Heights',
-    area: 'Providencia, Dapitan City',
-    roomType: 'Shared room',
-    price: 5200,
-    distanceKm: 3.4,
-    distanceFromLabel: 'Sta. Cruz',
-    matchPercent: 78,
-    roomLabel: 'Loft',
-    privacy: 'Shared',
-    occupancy: '3 persons',
-    featureBadges: ['Wi-Fi', 'Private bathroom'],
-    amenities: ['Furnished', 'Laundry', 'Visitors allowed', 'Non-smoking'],
-    availabilityLabel: 'Available now',
-    isFavorite: false,
-    category: 'Apartment',
   },
 ];
 
@@ -392,14 +291,13 @@ export interface RentalRequest {
 export const renterSeedRentalRequests: RentalRequest[] = [
   {
     id: 'req-seed-1',
-    roomId: 'room-studio-university',
-    roomTitle: 'Studio Unit near University',
-    propertyName: 'La Torre Apartelle',
-    monthlyRent: 3500,
+    roomId: 'room-casa-cuarto',
+    roomTitle: 'Casa Dela Cruz · Room 4',
+    propertyName: 'Casa Dela Cruz',
+    monthlyRent: 2500,
     status: 'Confirmed',
     submittedAt: '2026-09-05',
     decidedAt: '2026-09-07',
->>>>>>> momay
   },
 ];
 

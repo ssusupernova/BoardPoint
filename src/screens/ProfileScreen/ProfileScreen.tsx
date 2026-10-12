@@ -11,7 +11,6 @@ import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
 import { renterProfile, renterTenancy } from '@/data/mock';
 import { routes } from '@/routes';
 import { authService, useAuthSession } from '@/services/auth';
-import { useIsVerifiedRenter, useMyRegistrations } from '@/services/landlordData';
 import { useRenterContact } from '@/services/profile';
 import { isVerifiedRenter, useRentalRequestsState } from '@/services/rentalRequests';
 import { MONTH_ABBRS, parseISODate } from '@/utils/date';
@@ -42,18 +41,12 @@ export default function ProfileScreen() {
   const contact = useRenterContact();
   const { requests, ready } = useRentalRequestsState();
   const [signingOut, setSigningOut] = useState(false);
-  const verified = useIsVerifiedRenter(session?.user.id ?? null);
-  const registrations = useMyRegistrations(session?.user.id ?? null);
 
   if (!session) return null;
 
   const fullName = session.user.fullName || renterProfile.fullName;
   const email = session.user.email || renterProfile.email;
-<<<<<<< HEAD
-  const pendingCount = registrations.filter((item) => item.status === 'Pending').length;
-=======
   const verified = isVerifiedRenter(requests);
->>>>>>> momay
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -73,17 +66,6 @@ export default function ProfileScreen() {
       <View style={styles.hero}>
         <ProfileAvatar name={fullName} size={76} />
         <Text style={styles.name}>{fullName}</Text>
-<<<<<<< HEAD
-        <View style={styles.verifyBadge}>
-          {verified ? (
-            <StatusBadge text="Verified renter" variant="success" dot />
-          ) : pendingCount > 0 ? (
-            <StatusBadge text="Verification in progress" variant="warning" dot />
-          ) : (
-            <StatusBadge text="Not yet verified" variant="neutral" dot />
-          )}
-        </View>
-=======
         {ready ? (
           <View style={styles.verifyBadge}>
             <StatusBadge
@@ -93,7 +75,6 @@ export default function ProfileScreen() {
             />
           </View>
         ) : null}
->>>>>>> momay
         <Text style={styles.memberSince}>{renterProfile.memberSince}</Text>
       </View>
 

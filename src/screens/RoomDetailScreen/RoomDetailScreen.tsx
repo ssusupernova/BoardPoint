@@ -1,20 +1,14 @@
 import { useState } from 'react';
-<<<<<<< HEAD
 import { Alert, Pressable, Text, View } from 'react-native';
-=======
-import { Pressable, Text, View } from 'react-native';
->>>>>>> momay
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PageHeader } from '@/components/common/PageHeader/PageHeader';
 import { ScreenContainer } from '@/components/common/ScreenContainer/ScreenContainer';
 import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
-import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
 import { PrimaryButton } from '@/components/ui/PrimaryButton/PrimaryButton';
 import { renterMockRooms } from '@/data/mock';
 import { routes } from '@/routes';
-<<<<<<< HEAD
 import { useAuthSession } from '@/services/auth';
 import { toggleFavoriteRoom, useFavoriteRoomIds } from '@/services/favorites';
 import {
@@ -23,17 +17,8 @@ import {
   useLandlordData,
   useRoomRequestState,
 } from '@/services/landlordData';
-=======
-import { toggleFavoriteRoom, useFavoriteRoomIds } from '@/services/favorites';
-import {
-  cancelRentalRequest,
-  submitRentalRequest,
-  useRoomRequest,
-} from '@/services/rentalRequests';
->>>>>>> momay
 import { colors } from '@/theme';
 import { formatPeso } from '@/utils/currency';
-import { formatDisplayDate } from '@/utils/date';
 import { styles } from './RoomDetailScreen.styles';
 
 export default function RoomDetailScreen() {
@@ -46,8 +31,6 @@ export default function RoomDetailScreen() {
   const favoriteIds = useFavoriteRoomIds();
   const { properties } = useLandlordData();
   const room = renterMockRooms.find((item) => item.id === id);
-  const request = useRoomRequest(id ?? '');
-  const [submitting, setSubmitting] = useState(false);
 
   const requestState = useRoomRequestState(renterId, id ?? '');
   const isVerified = useIsVerifiedRenter(renterId, room?.propertyId);
@@ -70,7 +53,6 @@ export default function RoomDetailScreen() {
       ? `${room.distanceKm} km from ${room.distanceFromLabel}`
       : `${room.distanceKm} km away`;
 
-<<<<<<< HEAD
   const property = properties.find((item) => item.id === room.propertyId);
   const landlordRoom = property?.rooms.find((item) => item.id === room.landlordRoomId);
   const stillAvailable = landlordRoom?.status === 'Available';
@@ -102,31 +84,6 @@ export default function RoomDetailScreen() {
   const requestDisabled =
     requestState === 'pending' || requestState === 'approved' || !stillAvailable || requesting;
 
-=======
-  const requestState = request
-    ? request.status === 'Confirmed'
-      ? 'confirmed'
-      : request.status === 'Declined'
-        ? 'declined'
-        : 'pending'
-    : 'none';
-
-  const handleRequest = async () => {
-    setSubmitting(true);
-    try {
-      await submitRentalRequest({
-        roomId: room.id,
-        roomTitle: room.title,
-        propertyName: room.propertyName,
-        monthlyRent: room.price,
-      });
-      router.push(routes.renterApplications);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
->>>>>>> momay
   return (
     <ScreenContainer>
       <PageHeader title="Room details" onBack={() => router.back()} />
@@ -216,7 +173,6 @@ export default function RoomDetailScreen() {
       </View>
 
       <View style={styles.action}>
-<<<<<<< HEAD
         <PrimaryButton label={requestLabel} onPress={() => void handleRequest()} loading={requesting} disabled={requestDisabled} />
       </View>
 
@@ -228,75 +184,6 @@ export default function RoomDetailScreen() {
             : requestState === 'approved'
               ? 'Welcome aboard! Your landlord has confirmed your registration.'
               : 'Sending a request lets the landlord review your registration. Approval unlocks your Verified Renter badge at this property.'}
-=======
-        {requestState === 'confirmed' ? (
-          <View style={styles.statusCard}>
-            <StatusBadge text="Confirmed" variant="success" dot />
-            <Text style={styles.statusText}>
-              You&apos;re a verified renter — this room is confirmed for you.
-            </Text>
-            <OutlineButton
-              label="View my requests"
-              icon="list-outline"
-              onPress={() => router.push(routes.renterApplications)}
-            />
-          </View>
-        ) : requestState === 'pending' && request ? (
-          <View style={styles.statusCard}>
-            <StatusBadge text="Pending" variant="info" dot />
-            <Text style={styles.statusText}>
-              Request sent {formatDisplayDate(request.submittedAt)}. Waiting for the landlord to
-              confirm.
-            </Text>
-            <OutlineButton
-              label="View my requests"
-              icon="list-outline"
-              onPress={() => router.push(routes.renterApplications)}
-            />
-            <OutlineButton
-              label="Cancel request"
-              icon="close-outline"
-              onPress={() => void cancelRentalRequest(request.id)}
-            />
-          </View>
-        ) : requestState === 'declined' ? (
-          <View style={styles.statusCard}>
-            <StatusBadge text="Declined" />
-            <Text style={styles.statusText}>
-              This request wasn&apos;t approved. You can send a new request.
-            </Text>
-            <PrimaryButton
-              label="Request again"
-              icon="refresh-outline"
-              onPress={() => void handleRequest()}
-              loading={submitting}
-            />
-          </View>
-        ) : (
-          <PrimaryButton
-            label="Send rental request"
-            icon="paper-plane-outline"
-            onPress={() => void handleRequest()}
-            loading={submitting}
-            accessibilityLabel={`Send a rental request for ${room.title}`}
-          />
-        )}
-
-        <View style={styles.secondaryAction}>
-          <OutlineButton
-            label={isFavorite ? 'Saved to favorites' : 'Save this room'}
-            icon="heart-outline"
-            onPress={() => void toggleFavoriteRoom(room.id)}
-            accessibilityLabel={isFavorite ? 'Remove from saved rooms' : 'Save this room'}
-          />
-        </View>
-      </View>
-
-      <Text style={styles.note}>
-        {requestState === 'none'
-          ? 'Send a request and the landlord will confirm your registration.'
-          : 'You can still save this room or explore more matches in Recommended Rooms.'}
->>>>>>> momay
       </Text>
     </ScreenContainer>
   );

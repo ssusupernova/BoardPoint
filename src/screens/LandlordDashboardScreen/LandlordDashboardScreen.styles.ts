@@ -223,4 +223,38 @@ export const styles = StyleSheet.create({
     color: landlordColors.textPrimary,
     letterSpacing: 0.2,
   },
+
+  roomActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  roomAction: {
+    flex: 1,
+    height: 46,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: landlordColors.borderStrong,
+    backgroundColor: landlordColors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  roomActionPrimary: {
+    backgroundColor: landlordColors.primary,
+    borderColor: landlordColors.primary,
+  },
+  roomActionPressed: {
+    opacity: 0.88,
+  },
+  roomActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: landlordColors.primary,
+  },
+  roomActionTextPrimary: {
+    color: '#FFFFFF',
+  },
 });

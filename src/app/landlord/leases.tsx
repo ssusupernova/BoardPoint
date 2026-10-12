@@ -1,3 +1,15 @@
+import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
+import { landlordTenantForm, landlordTenantProfile } from '@/routes';
+import {
+  toTenantViews,
+  useLandlordData,
+  type TenantView,
+} from '@/services/landlordData';
+import { formatPeso } from '@/utils/currency';
+import { formatDisplayDate } from '@/utils/date';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
   Alert,
@@ -6,25 +18,15 @@ import {
   Text,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  toTenantViews,
-  useLandlordData,
-  type TenantView,
-} from '@/services/landlordData';
-import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
-import { formatPeso } from '@/utils/currency';
-import { formatDisplayDate } from '@/utils/date';
-import { styles, leaseStyles, LANDLORD_THEME } from './style';
+import { LANDLORD_THEME, leaseStyles, styles } from '../../styles/landlord';
 
 type LeaseFilter = 'All' | 'Renewal' | 'Active';
 
 export default function LandlordLeasesScreen() {
   const insets = useSafeAreaInsets();
   const { tenantId } = useLocalSearchParams<{ tenantId?: string }>();
+  const router = useRouter();
   const data = useLandlordData();
 
   const tenants = useMemo(() => toTenantViews(data), [data]);
@@ -112,6 +114,35 @@ export default function LandlordLeasesScreen() {
             </View>
           </View>
 
+          {/* Add New Tenant */}
+          <View style={leaseStyles.addCard}>
+            <View style={leaseStyles.addIconWrap}>
+              <Ionicons
+                name="person-add-outline"
+                size={20}
+                color={LANDLORD_THEME.onPrimary}
+              />
+            </View>
+            <View style={leaseStyles.addCardBody}>
+              <Text style={leaseStyles.addCardTitle}>Add New Tenant</Text>
+              <Text style={leaseStyles.addCardText}>
+                Start an inquiry, reserve a room, or add a tenant directly to
+                a room.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => router.push(landlordTenantForm())}
+              accessibilityRole="button"
+              accessibilityLabel="Add new tenant"
+              style={({ pressed }) => [
+                leaseStyles.addButton,
+                pressed && leaseStyles.addButtonPressed,
+              ]}
+            >
+              <Text style={leaseStyles.addButtonText}>Add Tenant</Text>
+            </Pressable>
+          </View>
+
           {/* Filters */}
           <View style={leaseStyles.filtersRow}>
             {(['All', 'Renewal', 'Active'] as LeaseFilter[]).map((f) => {
@@ -145,11 +176,15 @@ export default function LandlordLeasesScreen() {
             ) : null}
 
             {filtered.map((lease) => (
-              <View
+              <Pressable
                 key={lease.id}
-                style={[
+                onPress={() => router.push(landlordTenantProfile(lease.id))}
+                accessibilityRole="button"
+                accessibilityLabel={`Open tenant profile for ${lease.fullName}`}
+                style={({ pressed }) => [
                   styles.cardItem,
                   lease.id === tenantId && styles.cardItemHighlighted,
+                  pressed && { opacity: 0.9 },
                 ]}
               >
                 <View style={styles.cardItemTopRow}>
@@ -199,7 +234,7 @@ export default function LandlordLeasesScreen() {
                     </Pressable>
                   )}
                 </View>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>

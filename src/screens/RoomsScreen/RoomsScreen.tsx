@@ -1,18 +1,9 @@
-<<<<<<< HEAD
-import { Text, View } from 'react-native';
-=======
 import { Pressable, ScrollView, Text, View } from 'react-native';
->>>>>>> momay
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PageHeader } from '@/components/common/PageHeader/PageHeader';
 import { ScreenContainer } from '@/components/common/ScreenContainer/ScreenContainer';
 import { RoomListingCard } from '@/components/renter/rooms/RoomListingCard/RoomListingCard';
-<<<<<<< HEAD
-import { renterMockRooms } from '@/data/mock';
-import type { RoomCategory } from '@/data/types';
-=======
 import { ROOM_CATEGORY_ORDER, renterMockRooms, type RoomCategory } from '@/data/mock';
->>>>>>> momay
 import { routes } from '@/routes';
 import { toggleFavoriteRoom, useFavoriteRoomIds } from '@/services/favorites';
 import { styles } from './RoomsScreen.styles';
@@ -25,49 +16,22 @@ function isCategory(value: unknown): value is RoomCategory {
  *  filtered to one marketplace category via `?category=`. */
 export default function RoomsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ category?: string }>();
   const favoriteIds = useFavoriteRoomIds();
-<<<<<<< HEAD
-
-  const category = params.category as RoomCategory | undefined;
-  const categoryRooms = category
-    ? renterMockRooms.filter((room) => room.category === category)
-    : [];
-  const rooms = (category ? categoryRooms : [...renterMockRooms]).sort(
-    (a, b) => b.matchPercent - a.matchPercent
-  );
-=======
   const { category } = useLocalSearchParams<{ category?: string }>();
   const activeCategory = isCategory(category) ? category : null;
 
   const rooms = [...renterMockRooms]
     .filter((room) => !activeCategory || room.category === activeCategory)
     .sort((a, b) => b.matchPercent - a.matchPercent);
->>>>>>> momay
 
   return (
     <ScreenContainer>
       <PageHeader
-<<<<<<< HEAD
-        title={category ? `${category} rooms` : 'Explore rooms'}
-=======
         title={activeCategory ?? 'Explore rooms'}
->>>>>>> momay
         subtitle="Matches closest to your checklist"
         onBack={() => router.back()}
       />
 
-<<<<<<< HEAD
-      {category ? (
-        <Text style={styles.summary}>
-          {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'} available in {category}
-        </Text>
-      ) : (
-        <Text style={styles.summary}>
-          {rooms.length} rooms available · closest matches first
-        </Text>
-      )}
-=======
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -104,7 +68,6 @@ export default function RoomsScreen() {
       <Text style={styles.summary}>
         {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'} available · closest matches first
       </Text>
->>>>>>> momay
 
       <View style={styles.list}>
         {rooms.map((room) => (

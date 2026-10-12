@@ -1,3 +1,10 @@
+import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
+import { routes } from '@/routes';
+import { authService, useAuthSession } from '@/services/auth';
+import { useLandlordSummary } from '@/services/landlordData';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
   Alert,
@@ -6,15 +13,10 @@ import {
   Text,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { authService, useAuthSession } from '@/services/auth';
-import { useLandlordSummary } from '@/services/landlordData';
-import { routes } from '@/routes';
-import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
-import { styles, profileStyles, LANDLORD_THEME } from './style';
+import { profileStyles } from '../../styles/landlord/profile.styles';
+import { LANDLORD_THEME, styles } from '../../styles/landlord/styles';
+
 
 export default function LandlordProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -149,7 +151,7 @@ export default function LandlordProfileScreen() {
 
           <View style={styles.cardItem}>
             <Pressable
-              onPress={() => router.push(routes.landlordListSpace)}
+              onPress={() => router.push(routes.landlordAddProperty)}
               style={({ pressed }) => [
                 profileStyles.menuItem,
                 pressed && profileStyles.menuItemPressed,

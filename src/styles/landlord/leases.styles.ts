@@ -74,6 +74,57 @@ export const leaseStyles = StyleSheet.create({
     fontWeight: '700',
     color: LANDLORD_THEME.badgePeachText,
   },
+  addCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: LANDLORD_THEME.surface,
+    borderWidth: 1,
+    borderColor: LANDLORD_THEME.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginTop: 18,
+  },
+  addIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: LANDLORD_THEME.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addCardBody: {
+    flex: 1,
+  },
+  addCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: LANDLORD_THEME.textPrimary,
+  },
+  addCardText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: LANDLORD_THEME.textSecondary,
+    marginTop: 2,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: LANDLORD_THEME.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  addButtonPressed: {
+    opacity: 0.85,
+  },
+  addButtonText: {
+    color: LANDLORD_THEME.onPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });
 
 export default function LeasesStyleRoute() {

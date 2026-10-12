@@ -1,16 +1,11 @@
-import { useMemo, useState } from 'react';
+import { ProfileAvatar } from '@/components/common/ProfileAvatar/ProfileAvatar';
+import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
+
 import {
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import Ionicons from '@expo/vector-icons/Ionicons';
+  landlordPaymentDetails,
+  landlordPropertyDetails,
+  routes,
+} from '@/routes';
 import { useAuthSession } from '@/services/auth';
 import {
   decideRentalRequest,
@@ -22,16 +17,23 @@ import {
   type ActivityKind,
   type BillView,
 } from '@/services/landlordData';
-import {
-  landlordBillDetails,
-  landlordPropertyDetails,
-  routes,
-} from '@/routes';
 import { formatPeso } from '@/utils/currency';
 import { formatRelativeTime, formatShortDate } from '@/utils/date';
-import { ProfileAvatar } from '@/components/common/ProfileAvatar/ProfileAvatar';
-import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
-import { styles, dashboardStyles, LANDLORD_THEME } from './style';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useMemo, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { dashboardStyles } from '../../styles/landlord/dashboard.styles';
+import { LANDLORD_THEME, styles } from '../../styles/landlord/styles';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -124,36 +126,36 @@ export default function LandlordDashboardScreen() {
     info?: boolean;
     onPress: () => void;
   }[] = [
-    {
-      key: 'properties',
-      icon: 'business-outline',
-      value: summary.totalProperties,
-      label: 'Total Properties',
-      onPress: () => router.push(routes.landlordProperties),
-    },
-    {
-      key: 'rooms',
-      icon: 'grid-outline',
-      value: summary.totalRooms,
-      label: 'Total Rooms',
-      onPress: () => router.push(routes.landlordProperties),
-    },
-    {
-      key: 'available',
-      icon: 'key-outline',
-      value: summary.availableRooms,
-      label: 'Available Rooms',
-      info: true,
-      onPress: () => router.push(routes.landlordProperties),
-    },
-    {
-      key: 'tenants',
-      icon: 'people-outline',
-      value: summary.activeTenants,
-      label: 'Active Tenants',
-      onPress: () => router.push(routes.landlordLeases),
-    },
-  ];
+      {
+        key: 'properties',
+        icon: 'business-outline',
+        value: summary.totalProperties,
+        label: 'Total Properties',
+        onPress: () => router.push(routes.landlordProperties),
+      },
+      {
+        key: 'rooms',
+        icon: 'grid-outline',
+        value: summary.totalRooms,
+        label: 'Total Rooms',
+        onPress: () => router.push(routes.landlordProperties),
+      },
+      {
+        key: 'available',
+        icon: 'key-outline',
+        value: summary.availableRooms,
+        label: 'Available Rooms',
+        info: true,
+        onPress: () => router.push(routes.landlordProperties),
+      },
+      {
+        key: 'tenants',
+        icon: 'people-outline',
+        value: summary.activeTenants,
+        label: 'Active Tenants',
+        onPress: () => router.push(routes.landlordLeases),
+      },
+    ];
 
   const quickActions: { key: string; icon: IconName; label: string; onPress: () => void }[] =
     [
@@ -656,7 +658,7 @@ export default function LandlordDashboardScreen() {
                 upcoming.map((bill) => (
                   <Pressable
                     key={bill.id}
-                    onPress={() => router.push(landlordBillDetails(bill.id))}
+                    onPress={() => router.push(landlordPaymentDetails(bill.id))}
                     style={({ pressed }) => [
                       styles.cardItem,
                       pressed && styles.cardItemPressed,
@@ -722,7 +724,7 @@ export default function LandlordDashboardScreen() {
                       style={[
                         dashboardStyles.dueChipText,
                         summary.overdueCount > 0 &&
-                          dashboardStyles.overdueChipText,
+                        dashboardStyles.overdueChipText,
                       ]}
                     >
                       {summary.overdueCount > 0
@@ -736,7 +738,7 @@ export default function LandlordDashboardScreen() {
                   overdue.map((bill) => (
                     <Pressable
                       key={bill.id}
-                      onPress={() => router.push(landlordBillDetails(bill.id))}
+                      onPress={() => router.push(landlordPaymentDetails(bill.id))}
                       style={({ pressed }) => [
                         pressed && { opacity: 0.7 },
                         { marginTop: 12 },

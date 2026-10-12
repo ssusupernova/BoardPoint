@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 export const LANDLORD_THEME = {
   background: '#FAF6F0',
   surface: '#FFFDFA',
+  surfacePressed: '#F5EDE2',
   border: '#EFE7DE',
   borderSubtle: '#F4EFEA',
   primary: '#BF7E4A',

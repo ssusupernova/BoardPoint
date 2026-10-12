@@ -1,3 +1,6 @@
+import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
   Alert,
@@ -6,11 +9,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
-import { styles, maintenanceStyles, LANDLORD_THEME } from './style';
+import { LANDLORD_THEME, maintenanceStyles, styles } from '../../styles/landlord';
 
 interface Ticket {
   id: string;
@@ -190,8 +190,8 @@ export default function LandlordMaintenanceScreen() {
                       ticket.status === 'Urgent'
                         ? styles.itemBadgeUrgent
                         : ticket.status === 'Scheduled'
-                        ? styles.itemBadgeBlue
-                        : styles.itemBadgePeach
+                          ? styles.itemBadgeBlue
+                          : styles.itemBadgePeach
                     }
                   >
                     <Text
@@ -199,8 +199,8 @@ export default function LandlordMaintenanceScreen() {
                         ticket.status === 'Urgent'
                           ? styles.itemBadgeUrgentText
                           : ticket.status === 'Scheduled'
-                          ? styles.itemBadgeBlueText
-                          : styles.itemBadgePeachText
+                            ? styles.itemBadgeBlueText
+                            : styles.itemBadgePeachText
                       }
                     >
                       {ticket.status}

@@ -55,7 +55,9 @@ export function useSignUp(role: SignUpRole) {
         role,
       });
       const nextRoute =
-        role === 'landlord' ? routes.landlordListSpace : dashboardForRole(role);
+        session.user.role === 'landlord'
+          ? routes.landlordAddProperty
+          : dashboardForRole(session.user.role === 'renter' ? 'renter' : undefined);
       router.replace(nextRoute);
 
       Alert.alert(
