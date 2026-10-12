@@ -477,6 +477,81 @@ export const dashboardStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
+
+  // Rental requests
+  requestCard: {
+    backgroundColor: LANDLORD_THEME.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: LANDLORD_THEME.border,
+    padding: 14,
+    marginBottom: 10,
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  requestName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: LANDLORD_THEME.textPrimary,
+  },
+  requestMeta: {
+    fontSize: 12.5,
+    color: LANDLORD_THEME.textSecondary,
+    marginTop: 2,
+  },
+  requestRent: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: LANDLORD_THEME.primaryDark,
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  requestAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  requestActionApprove: {
+    backgroundColor: LANDLORD_THEME.primary,
+  },
+  requestActionApprovePressed: {
+    backgroundColor: LANDLORD_THEME.primaryPressed,
+  },
+  requestActionDecline: {
+    backgroundColor: LANDLORD_THEME.badgePeachBg,
+  },
+  requestActionDeclinePressed: {
+    backgroundColor: LANDLORD_THEME.border,
+  },
+  requestActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: LANDLORD_THEME.onPrimary,
+  },
+  requestActionTextDecline: {
+    color: LANDLORD_THEME.primaryDark,
+  },
+  requestEmpty: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: LANDLORD_THEME.textSecondary,
+    backgroundColor: LANDLORD_THEME.badgePeachBg,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
 });
 
 export default function DashboardStyleRoute() {

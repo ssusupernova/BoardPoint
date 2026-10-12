@@ -19,6 +19,7 @@
 
 import { useMemo, useSyncExternalStore } from 'react';
 import * as Crypto from 'expo-crypto';
+import { renterMockRooms } from '@/data/renter';
 import { storageGet, storageSet } from '@/services/storage';
 import { toISODate, parseISODate, formatShortDate, formatDisplayDate } from '@/utils/date';
 import { formatPeso } from '@/utils/currency';
@@ -56,8 +57,19 @@ function daysAgoAt(days: number, hour: number, minute: number): string {
 }
 
 export type BillStatus = 'Paid' | 'Due' | 'Overdue' | 'Upcoming';
-export type ActivityKind = 'payment' | 'inquiry' | 'tenant' | 'availability';
+export type ActivityKind = 'payment' | 'inquiry' | 'tenant' | 'availability' | 'request';
 export type LeaseStatus = 'Renewal' | 'Active';
+
+/** Lifecycle of a renter's request for a room. */
+export type RentalRequestStatus = 'Pending' | 'Approved' | 'Declined';
+
+/**
+ * Lifecycle of a renter's registration with a landlord/property. A
+ * registration starts `Pending` when the rental request is submitted and only
+ * becomes `Confirmed` when the landlord approves the request — the confirmed
+ * record is what backs the renter's "Verified Renter" badge.
+ */
+export type RegistrationStatus = 'Pending' | 'Confirmed' | 'Declined';
 
 export interface LandlordRoom {
   id: string;
@@ -117,12 +129,55 @@ export interface NotificationRecord {
   read: boolean;
 }
 
+/**
+ * A renter's application for a specific room. The room is resolved to the
+ * owning property through the marketplace listing — never trusted from client
+ * input alone — and the monthly rent is snapshotted from the landlord room so
+ * the landlord reviews the authoritative amount.
+ */
+export interface RentalRequest {
+  id: string;
+  renterId: string;
+  renterName: string;
+  /** Marketplace listing id (`RenterRoom.id`). */
+  roomRefId: string;
+  propertyId: string;
+  roomId: string;
+  monthlyRent: number;
+  status: RentalRequestStatus;
+  /** ISO datetime the request was submitted. */
+  createdAt: string;
+  /** ISO datetime the landlord decided; undefined while pending. */
+  decidedAt?: string;
+}
+
+/**
+ * A renter's registration relationship with a property's landlord. Scoped by
+ * `propertyId` (and `landlordId` for forward compatibility) so verification
+ * with one landlord never leaks into another landlord's context.
+ */
+export interface Registration {
+  id: string;
+  renterId: string;
+  renterName: string;
+  landlordId: string;
+  propertyId: string;
+  roomId: string;
+  status: RegistrationStatus;
+  /** ISO datetime the request was submitted. */
+  createdAt: string;
+  /** ISO datetime the landlord confirmed; undefined unless confirmed. */
+  confirmedAt?: string;
+}
+
 export interface LandlordData {
   properties: LandlordProperty[];
   tenants: LandlordTenant[];
   bills: RentBill[];
   activities: ActivityRecord[];
   notifications: NotificationRecord[];
+  requests: RentalRequest[];
+  registrations: Registration[];
 }
 
 function seedData(): LandlordData {
@@ -174,6 +229,33 @@ function seedData(): LandlordData {
           { id: 'p3-r6', label: 'Room 6', rent: 2800, status: 'Available' },
         ],
       },
+      {
+        id: 'prop-4',
+        name: 'Sunrise Village House',
+        address: 'Poblacion, Dapitan City',
+        rooms: [
+          { id: 'p4-r1', label: 'Family Room', rent: 4800, status: 'Available' },
+          { id: 'p4-r2', label: 'Twin Room', rent: 4200, status: 'Available' },
+        ],
+      },
+      {
+        id: 'prop-5',
+        name: 'Palm Condo Residences',
+        address: 'San Roque, Dapitan City',
+        rooms: [
+          { id: 'p5-r1', label: 'Studio', rent: 5500, status: 'Available' },
+          { id: 'p5-r2', label: 'One-Bedroom', rent: 6000, status: 'Available' },
+        ],
+      },
+      {
+        id: 'prop-6',
+        name: 'Dahlia Apartments',
+        address: 'Providencia, Dapitan City',
+        rooms: [
+          { id: 'p6-r1', label: 'Studio', rent: 4500, status: 'Available' },
+          { id: 'p6-r2', label: 'Loft', rent: 5200, status: 'Available' },
+        ],
+      },
     ],
     tenants: [
       { id: 'ten-1', fullName: 'Juan Dela Cruz', propertyId: 'prop-1', roomId: 'p1-r1', monthlyRent: 2500, leaseStart: daysFromNow(-345), leaseEnd: renewalDue, status: 'Active' },
@@ -213,6 +295,8 @@ function seedData(): LandlordData {
       { id: 'noti-3', title: `Lease renewal due ${formatDisplayDate(renewalDue)}`, detail: 'Juan Dela Cruz · Casa Dela Cruz · Room 1.', at: daysAgoAt(2, 18, 30), read: false },
       { id: 'noti-4', title: 'Payment received', detail: '₱2,500 from Carlo Mendoza was recorded.', at: daysAgoAt(1, 16, 41), read: true },
     ],
+    requests: [],
+    registrations: [],
   };
 }
 
@@ -253,7 +337,12 @@ async function hydrateLandlordData(): Promise<void> {
   try {
     const parsed = JSON.parse(raw) as LandlordData;
     if (parsed && Array.isArray(parsed.properties) && Array.isArray(parsed.bills)) {
-      setState(parsed);
+      setState({
+        ...parsed,
+        // Older caches predate rental requests; default them instead of failing.
+        requests: Array.isArray(parsed.requests) ? parsed.requests : [],
+        registrations: Array.isArray(parsed.registrations) ? parsed.registrations : [],
+      });
     }
   } catch {
     // Ignore a malformed cache and keep the seed records.
@@ -310,6 +399,331 @@ export async function markAllNotificationsRead(): Promise<void> {
     notifications: state.notifications.map((item) => ({ ...item, read: true })),
   });
   await persist();
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rental requests & registrations                                            */
+/* -------------------------------------------------------------------------- */
+
+export type RentalRequestErrorCode =
+  | 'room-not-found'
+  | 'room-unavailable'
+  | 'unknown-property'
+  | 'duplicate-request'
+  | 'request-not-found'
+  | 'request-decided';
+
+export class RentalRequestError extends Error {
+  readonly code: RentalRequestErrorCode;
+
+  constructor(code: RentalRequestErrorCode, message: string) {
+    super(message);
+    this.name = 'RentalRequestError';
+    this.code = code;
+  }
+}
+
+function findListing(roomRefId: string) {
+  return renterMockRooms.find((room) => room.id === roomRefId) ?? null;
+}
+
+function findLandlordRoom(propertyId: string, roomId: string) {
+  const property = state.properties.find((item) => item.id === propertyId) ?? null;
+  const room = property?.rooms.find((item) => item.id === roomId) ?? null;
+  return { property, room };
+}
+
+function pendingRequestFor(renterId: string, roomRefId: string): RentalRequest | undefined {
+  return state.requests.find(
+    (item) =>
+      item.renterId === renterId && item.roomRefId === roomRefId && item.status === 'Pending'
+  );
+}
+
+function confirmedRegistrationFor(renterId: string, propertyId: string): Registration | undefined {
+  return state.registrations.find(
+    (item) =>
+      item.renterId === renterId &&
+      item.propertyId === propertyId &&
+      item.status === 'Confirmed'
+  );
+}
+
+/**
+ * Files a rental request for a marketplace listing. The listing resolves the
+ * owning property and room inside this landlord book, and the rent is
+ * snapshotted from the landlord room — client-supplied ownership, price, and
+ * availability are never trusted. Also opens a `Pending` registration so the
+ * renter can follow the request; the registration only becomes `Confirmed`
+ * through `decideRentalRequest`.
+ */
+export async function submitRentalRequest(input: {
+  renterId: string;
+  renterName: string;
+  roomRefId: string;
+}): Promise<RentalRequest> {
+  const listing = findListing(input.roomRefId);
+  if (!listing || !listing.available) {
+    throw new RentalRequestError('room-not-found', 'This room is no longer listed.');
+  }
+
+  const { property, room } = findLandlordRoom(listing.propertyId, listing.landlordRoomId);
+  if (!property || !room) {
+    throw new RentalRequestError('unknown-property', 'This room is no longer listed.');
+  }
+  if (room.status !== 'Available') {
+    throw new RentalRequestError(
+      'room-unavailable',
+      'This room was just taken. Please choose another room.'
+    );
+  }
+  if (pendingRequestFor(input.renterId, listing.id)) {
+    throw new RentalRequestError(
+      'duplicate-request',
+      'You already have a pending request for this room.'
+    );
+  }
+  if (confirmedRegistrationFor(input.renterId, property.id)) {
+    throw new RentalRequestError(
+      'duplicate-request',
+      'You are already registered at this property.'
+    );
+  }
+
+  const now = new Date().toISOString();
+  const request: RentalRequest = {
+    id: Crypto.randomUUID(),
+    renterId: input.renterId,
+    renterName: input.renterName,
+    roomRefId: listing.id,
+    propertyId: property.id,
+    roomId: room.id,
+    monthlyRent: room.rent,
+    status: 'Pending',
+    createdAt: now,
+  };
+  const registration: Registration = {
+    id: Crypto.randomUUID(),
+    renterId: input.renterId,
+    renterName: input.renterName,
+    landlordId: listing.landlordId,
+    propertyId: property.id,
+    roomId: room.id,
+    status: 'Pending',
+    createdAt: now,
+  };
+  const activity: ActivityRecord = {
+    id: Crypto.randomUUID(),
+    kind: 'request',
+    title: 'New rental request',
+    detail: `${input.renterName} · ${property.name} · ${room.label} · ${formatPeso(room.rent)}/month`,
+    at: now,
+  };
+  const notification: NotificationRecord = {
+    id: Crypto.randomUUID(),
+    title: 'New rental request',
+    detail: `${input.renterName} requested ${property.name} · ${room.label}.`,
+    at: now,
+    read: false,
+  };
+
+  setState({
+    ...state,
+    requests: [request, ...state.requests],
+    registrations: [registration, ...state.registrations],
+    activities: [activity, ...state.activities],
+    notifications: [notification, ...state.notifications],
+  });
+  await persist();
+  return request;
+}
+
+/**
+ * Landlord decision on a pending request. Approving revalidates availability,
+ * occupies the room, records the tenant, and confirms the registration (which
+ * lights up the renter's Verified Renter badge). Declining closes the request
+ * and its registration while preserving both for history.
+ */
+export async function decideRentalRequest(
+  requestId: string,
+  decision: 'approve' | 'decline'
+): Promise<RentalRequest> {
+  const request = state.requests.find((item) => item.id === requestId);
+  if (!request) {
+    throw new RentalRequestError('request-not-found', 'This request no longer exists.');
+  }
+  if (request.status !== 'Pending') {
+    throw new RentalRequestError('request-decided', 'This request was already decided.');
+  }
+
+  const { property, room } = findLandlordRoom(request.propertyId, request.roomId);
+  if (!property || !room) {
+    throw new RentalRequestError('unknown-property', 'This room is no longer listed.');
+  }
+
+  const now = new Date().toISOString();
+
+  if (decision === 'decline') {
+    const declined: RentalRequest = { ...request, status: 'Declined', decidedAt: now };
+    const activity: ActivityRecord = {
+      id: Crypto.randomUUID(),
+      kind: 'request',
+      title: 'Rental request declined',
+      detail: `${request.renterName} · ${property.name} · ${room.label}`,
+      at: now,
+    };
+    setState({
+      ...state,
+      requests: state.requests.map((item) => (item.id === requestId ? declined : item)),
+      registrations: state.registrations.map((item) =>
+        item.renterId === request.renterId &&
+        item.propertyId === request.propertyId &&
+        item.status === 'Pending'
+          ? { ...item, status: 'Declined' }
+          : item
+      ),
+      activities: [activity, ...state.activities],
+    });
+    await persist();
+    return declined;
+  }
+
+  if (room.status !== 'Available') {
+    throw new RentalRequestError(
+      'room-unavailable',
+      'This room was just taken, so the request can no longer be approved.'
+    );
+  }
+
+  const tenantId = Crypto.randomUUID();
+  const approved: RentalRequest = { ...request, status: 'Approved', decidedAt: now };
+  const activity: ActivityRecord = {
+    id: Crypto.randomUUID(),
+    kind: 'tenant',
+    title: 'Tenant registered',
+    detail: `${request.renterName} moved into ${property.name} · ${room.label}`,
+    at: now,
+  };
+  const notification: NotificationRecord = {
+    id: Crypto.randomUUID(),
+    title: 'Registration confirmed',
+    detail: `${request.renterName} · ${property.name} · ${room.label}.`,
+    at: now,
+    read: false,
+  };
+
+  setState({
+    ...state,
+    requests: state.requests.map((item) => (item.id === requestId ? approved : item)),
+    registrations: state.registrations.map((item) =>
+      item.renterId === request.renterId &&
+      item.propertyId === request.propertyId &&
+      item.status === 'Pending'
+        ? { ...item, status: 'Confirmed', confirmedAt: now }
+        : item
+    ),
+    properties: state.properties.map((item) =>
+      item.id === property.id
+        ? {
+            ...item,
+            rooms: item.rooms.map((candidate) =>
+              candidate.id === room.id
+                ? { ...candidate, status: 'Occupied', tenantId }
+                : candidate
+            ),
+          }
+        : item
+    ),
+    tenants: [
+      ...state.tenants,
+      {
+        id: tenantId,
+        fullName: request.renterName,
+        propertyId: property.id,
+        roomId: room.id,
+        monthlyRent: room.rent,
+        leaseStart: toISODate(new Date()),
+        status: 'Active',
+      },
+    ],
+    activities: [activity, ...state.activities],
+    notifications: [notification, ...state.notifications],
+  });
+  await persist();
+  return approved;
+}
+
+export function useRentalRequests(): RentalRequest[] {
+  return useLandlordData().requests;
+}
+
+export function useMyRentalRequests(renterId: string | null): RentalRequest[] {
+  const { requests } = useLandlordData();
+  return useMemo(
+    () => (renterId ? requests.filter((item) => item.renterId === renterId) : []),
+    [requests, renterId]
+  );
+}
+
+export function useMyRegistrations(renterId: string | null): Registration[] {
+  const { registrations } = useLandlordData();
+  return useMemo(
+    () => (renterId ? registrations.filter((item) => item.renterId === renterId) : []),
+    [registrations, renterId]
+  );
+}
+
+/**
+ * Whether the renter holds a *confirmed* registration — the single source of
+ * truth behind the Verified Renter badge. Scoped to one property when
+ * `propertyId` is given so verification never leaks across landlords.
+ */
+export function isVerifiedRenter(
+  registrations: Registration[],
+  renterId: string | null,
+  propertyId?: string
+): boolean {
+  if (!renterId) return false;
+  return registrations.some(
+    (item) =>
+      item.renterId === renterId &&
+      item.status === 'Confirmed' &&
+      (propertyId ? item.propertyId === propertyId : true)
+  );
+}
+
+export function useIsVerifiedRenter(renterId: string | null, propertyId?: string): boolean {
+  const { registrations } = useLandlordData();
+  return useMemo(
+    () => isVerifiedRenter(registrations, renterId, propertyId),
+    [registrations, renterId, propertyId]
+  );
+}
+
+/** Renter-facing state of one marketplace listing. */
+export type RoomRequestState = 'none' | 'pending' | 'approved' | 'declined';
+
+export function roomRequestState(
+  data: LandlordData,
+  renterId: string | null,
+  roomRefId: string
+): RoomRequestState {
+  if (!renterId) return 'none';
+  const mine = data.requests.filter(
+    (item) => item.renterId === renterId && item.roomRefId === roomRefId
+  );
+  if (mine.some((item) => item.status === 'Pending')) return 'pending';
+  if (mine.some((item) => item.status === 'Approved')) return 'approved';
+  if (mine.some((item) => item.status === 'Declined')) return 'declined';
+  return 'none';
+}
+
+export function useRoomRequestState(
+  renterId: string | null,
+  roomRefId: string
+): RoomRequestState {
+  const data = useLandlordData();
+  return useMemo(() => roomRequestState(data, renterId, roomRefId), [data, renterId, roomRefId]);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -413,6 +827,26 @@ export function toTenantViews(data: LandlordData): TenantView[] {
       leaseStatus: leaseStatus(tenant, today),
     };
   });
+}
+
+export interface RequestView extends RentalRequest {
+  propertyName: string;
+  roomLabel: string;
+}
+
+/** Rental requests newest-first with their property/room display names. */
+export function toRequestViews(data: LandlordData): RequestView[] {
+  return [...data.requests]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((request) => {
+      const property = data.properties.find((item) => item.id === request.propertyId);
+      const room = property?.rooms.find((item) => item.id === request.roomId);
+      return {
+        ...request,
+        propertyName: property?.name ?? '',
+        roomLabel: room?.label ?? '',
+      };
+    });
 }
 
 /* -------------------------------------------------------------------------- */

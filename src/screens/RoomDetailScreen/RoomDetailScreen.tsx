@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -7,7 +8,15 @@ import { ScreenContainer } from '@/components/common/ScreenContainer/ScreenConta
 import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
 import { PrimaryButton } from '@/components/ui/PrimaryButton/PrimaryButton';
 import { renterMockRooms } from '@/data/mock';
+import { routes } from '@/routes';
+import { useAuthSession } from '@/services/auth';
 import { toggleFavoriteRoom, useFavoriteRoomIds } from '@/services/favorites';
+import {
+  submitRentalRequest,
+  useIsVerifiedRenter,
+  useLandlordData,
+  useRoomRequestState,
+} from '@/services/landlordData';
 import { colors } from '@/theme';
 import { formatPeso } from '@/utils/currency';
 import { styles } from './RoomDetailScreen.styles';
@@ -15,8 +24,18 @@ import { styles } from './RoomDetailScreen.styles';
 export default function RoomDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { session } = useAuthSession();
+  const renterId = session?.user.id ?? null;
+  const renterName = session?.user.fullName || session?.user.username || 'Renter';
+
   const favoriteIds = useFavoriteRoomIds();
+  const { properties } = useLandlordData();
   const room = renterMockRooms.find((item) => item.id === id);
+
+  const requestState = useRoomRequestState(renterId, id ?? '');
+  const isVerified = useIsVerifiedRenter(renterId, room?.propertyId);
+
+  const [requesting, setRequesting] = useState(false);
 
   if (!room) {
     return (
@@ -33,6 +52,37 @@ export default function RoomDetailScreen() {
     room.distanceFromLabel != null
       ? `${room.distanceKm} km from ${room.distanceFromLabel}`
       : `${room.distanceKm} km away`;
+
+  const property = properties.find((item) => item.id === room.propertyId);
+  const landlordRoom = property?.rooms.find((item) => item.id === room.landlordRoomId);
+  const stillAvailable = landlordRoom?.status === 'Available';
+
+  const requestLabel = (() => {
+    if (requestState === 'pending') return 'Request sent';
+    if (requestState === 'approved') return 'Approved · You are in';
+    if (requestState === 'declined') return 'Request this room';
+    return 'Request this room';
+  })();
+
+  const handleRequest = async () => {
+    if (!renterId) {
+      router.replace(routes.signIn);
+      return;
+    }
+    setRequesting(true);
+    try {
+      await submitRentalRequest({ renterId, renterName, roomRefId: room.id });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Something went wrong sending your request.';
+      Alert.alert('Could not send request', message);
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const requestDisabled =
+    requestState === 'pending' || requestState === 'approved' || !stillAvailable || requesting;
 
   return (
     <ScreenContainer>
@@ -84,6 +134,12 @@ export default function RoomDetailScreen() {
         <Text style={styles.perMonth}>/month</Text>
       </View>
 
+      {isVerified ? (
+        <View style={styles.badges}>
+          <StatusBadge text="Verified renter" variant="success" />
+        </View>
+      ) : null}
+
       {room.featureBadges?.length ? (
         <View style={styles.badges}>
           {room.featureBadges.map((badge) => (
@@ -116,16 +172,17 @@ export default function RoomDetailScreen() {
       </View>
 
       <View style={styles.action}>
-        <PrimaryButton
-          label={isFavorite ? 'Saved to favorites' : 'Save this room'}
-          icon="heart"
-          onPress={() => void toggleFavoriteRoom(room.id)}
-          accessibilityLabel={isFavorite ? 'Remove from saved rooms' : 'Save this room'}
-        />
+        <PrimaryButton label={requestLabel} onPress={() => void handleRequest()} loading={requesting} disabled={requestDisabled} />
       </View>
 
       <Text style={styles.note}>
-        Contact the landlord to schedule a viewing once you&apos;re ready.
+        {!stillAvailable
+          ? 'This room was just taken. Browse similar rooms in Recommended Rooms.'
+          : requestState === 'pending'
+            ? 'The landlord will review your request. You will be marked as a verified renter here once it is approved.'
+            : requestState === 'approved'
+              ? 'Welcome aboard! Your landlord has confirmed your registration.'
+              : 'Sending a request lets the landlord review your registration. Approval unlocks your Verified Renter badge at this property.'}
       </Text>
     </ScreenContainer>
   );

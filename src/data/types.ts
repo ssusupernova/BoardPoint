@@ -4,12 +4,15 @@
 
 export type RoomPrivacy = 'Private' | 'Shared';
 
+/** Marketplace accommodation category shown as a carousel heading. */
+export type RoomCategory = 'Village House' | 'Condo' | 'Apartment' | 'Boarding House';
+
 export interface RenterRoom {
   id: string;
   title: string;
   area: string;
   roomType: 'Private room' | 'Shared room';
-  /** Monthly rent in PHP. */
+  /** Monthly rent in PHP. Matches the linked landlord room's rent. */
   price: number;
   distanceKm: number;
   /** 0-100 match against the renter's checklist. */
@@ -31,6 +34,21 @@ export interface RenterRoom {
   imageUri?: string;
   /** Whether the renter has bookmarked this room. */
   isFavorite?: boolean;
+  /** Marketplace category used to group recommendation carousels. */
+  category: RoomCategory;
+  /** Owner of the property in the landlord book (`landlordData`). */
+  landlordId: string;
+  /** Property in the landlord book that contains this room. */
+  propertyId: string;
+  /** Room inside the landlord property; its status is authoritative. */
+  landlordRoomId: string;
+  /** Whether the listing can currently be requested. */
+  available: boolean;
+  /**
+   * Genuinely promoted listing. Renders the red "SPECIAL" badge and the gold
+   * outline on recommendation cards. Set sparingly in seed data.
+   */
+  featured?: boolean;
 }
 
 export interface LandlordListing {

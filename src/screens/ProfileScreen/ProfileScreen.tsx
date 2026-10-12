@@ -11,6 +11,7 @@ import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
 import { renterProfile, renterTenancy } from '@/data/mock';
 import { routes } from '@/routes';
 import { authService, useAuthSession } from '@/services/auth';
+import { useIsVerifiedRenter, useMyRegistrations } from '@/services/landlordData';
 import { useRenterContact } from '@/services/profile';
 import { MONTH_ABBRS, parseISODate } from '@/utils/date';
 import { formatPeso } from '@/utils/currency';
@@ -39,11 +40,14 @@ export default function ProfileScreen() {
   const { session } = useAuthSession();
   const contact = useRenterContact();
   const [signingOut, setSigningOut] = useState(false);
+  const verified = useIsVerifiedRenter(session?.user.id ?? null);
+  const registrations = useMyRegistrations(session?.user.id ?? null);
 
   if (!session) return null;
 
   const fullName = session.user.fullName || renterProfile.fullName;
   const email = session.user.email || renterProfile.email;
+  const pendingCount = registrations.filter((item) => item.status === 'Pending').length;
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -64,7 +68,13 @@ export default function ProfileScreen() {
         <ProfileAvatar name={fullName} size={76} />
         <Text style={styles.name}>{fullName}</Text>
         <View style={styles.verifyBadge}>
-          <StatusBadge text="Verified renter" variant="success" dot />
+          {verified ? (
+            <StatusBadge text="Verified renter" variant="success" dot />
+          ) : pendingCount > 0 ? (
+            <StatusBadge text="Verification in progress" variant="warning" dot />
+          ) : (
+            <StatusBadge text="Not yet verified" variant="neutral" dot />
+          )}
         </View>
         <Text style={styles.memberSince}>{renterProfile.memberSince}</Text>
       </View>

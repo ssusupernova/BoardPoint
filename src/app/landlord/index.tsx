@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -13,8 +13,10 @@ import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuthSession } from '@/services/auth';
 import {
+  decideRentalRequest,
   markAllNotificationsRead,
   toPropertyViews,
+  toRequestViews,
   useLandlordData,
   useLandlordSummary,
   type ActivityKind,
@@ -38,6 +40,7 @@ const ACTIVITY_ICONS: Record<ActivityKind, { icon: IconName; info: boolean }> = 
   inquiry: { icon: 'chatbubble-outline', info: true },
   tenant: { icon: 'person-add-outline', info: false },
   availability: { icon: 'key-outline', info: true },
+  request: { icon: 'mail-unread-outline', info: true },
 };
 
 function greetingForHour(hour: number): string {
@@ -97,6 +100,9 @@ export default function LandlordDashboardScreen() {
       ),
     [data]
   );
+  const requestViews = useMemo(() => toRequestViews(data), [data]);
+  const pendingRequests = requestViews.filter((request) => request.status === 'Pending');
+  const [decidingId, setDecidingId] = useState<string | null>(null);
   const activities = useMemo(
     () =>
       [...data.activities].sort(
@@ -209,6 +215,25 @@ export default function LandlordDashboardScreen() {
         },
       ]
     );
+  };
+
+  const decide = (requestId: string, decision: 'approve' | 'decline') => {
+    setDecidingId(requestId);
+    void decideRentalRequest(requestId, decision)
+      .then((request) => {
+        if (decision === 'approve') {
+          Alert.alert(
+            'Request approved',
+            `${request.renterName} is now registered and the room was marked occupied.`
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : 'Please try again.';
+        Alert.alert('Could not decide request', message);
+      })
+      .finally(() => setDecidingId(null));
   };
 
   const dueChip = (bill: BillView) => {
@@ -420,6 +445,84 @@ export default function LandlordDashboardScreen() {
               </Text>
             )}
           </Pressable>
+
+          {/* Rental Requests */}
+          <SectionHeader
+            title="Rental Requests"
+            actionLabel="View all"
+            onAction={() => router.push(routes.landlordProperties)}
+          />
+          {pendingRequests.length > 0 ? (
+            pendingRequests.slice(0, 4).map((request) => (
+              <View key={request.id} style={dashboardStyles.requestCard}>
+                <View style={dashboardStyles.requestHeader}>
+                  <View style={dashboardStyles.paymentInfo}>
+                    <Text style={dashboardStyles.requestName}>
+                      {request.renterName}
+                    </Text>
+                    <Text style={dashboardStyles.requestMeta}>
+                      {request.propertyName} · {request.roomLabel}
+                    </Text>
+                  </View>
+                  <Text style={dashboardStyles.requestRent}>
+                    {formatPeso(request.monthlyRent)}/month
+                  </Text>
+                </View>
+                <View style={dashboardStyles.requestActions}>
+                  <Pressable
+                    onPress={() => decide(request.id, 'approve')}
+                    disabled={decidingId === request.id}
+                    style={({ pressed }) => [
+                      dashboardStyles.requestAction,
+                      dashboardStyles.requestActionApprove,
+                      pressed && dashboardStyles.requestActionApprovePressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Approve ${request.renterName}'s request`}
+                  >
+                    <Ionicons
+                      name="checkmark"
+                      size={15}
+                      color={LANDLORD_THEME.onPrimary}
+                    />
+                    <Text style={dashboardStyles.requestActionText}>
+                      Approve
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => decide(request.id, 'decline')}
+                    disabled={decidingId === request.id}
+                    style={({ pressed }) => [
+                      dashboardStyles.requestAction,
+                      dashboardStyles.requestActionDecline,
+                      pressed && dashboardStyles.requestActionDeclinePressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Decline ${request.renterName}'s request`}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={15}
+                      color={LANDLORD_THEME.primaryDark}
+                    />
+                    <Text
+                      style={[
+                        dashboardStyles.requestActionText,
+                        dashboardStyles.requestActionTextDecline,
+                      ]}
+                    >
+                      Decline
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={dashboardStyles.requestEmpty}>
+              No pending requests. Renter applications will appear here for
+              review and approval.
+            </Text>
+          )}
 
           {hasProperties ? (
             <>

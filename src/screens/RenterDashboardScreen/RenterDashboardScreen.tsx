@@ -43,6 +43,22 @@ export default function RenterDashboardScreen() {
       </View>
 
       <View style={styles.section}>
+        <SectionHeader title="Find your next home" />
+        <View style={styles.list}>
+          <OutlineButton
+            label="Recommended rooms for you"
+            icon="sparkles"
+            onPress={() => router.push(routes.renterRecommended)}
+          />
+          <OutlineButton
+            label="Explore all rooms"
+            icon="grid-outline"
+            onPress={() => router.push(routes.renterRooms)}
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <SectionHeader title="Payment Overview" />
         <PaymentOverviewCard
           overview={renterPaymentOverview}

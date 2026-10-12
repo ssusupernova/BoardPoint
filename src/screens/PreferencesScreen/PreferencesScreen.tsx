@@ -17,12 +17,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { BrandHeader } from '@/components/auth/BrandHeader/BrandHeader';
 import { ErrorBanner } from '@/components/auth/ErrorBanner/ErrorBanner';
 import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
-import { SaveConfirmationModal } from '@/components/renter/SaveConfirmationModal/SaveConfirmationModal';
 import { LocationSection } from '@/components/renter/sections/LocationSection/LocationSection';
 import { EssentialsSection } from '@/components/renter/sections/EssentialsSection/EssentialsSection';
 import { PreferencesSection } from '@/components/renter/sections/PreferencesSection/PreferencesSection';
 import { PrimaryButton } from '@/components/ui/PrimaryButton/PrimaryButton';
 import { useAuthSession } from '@/services/auth';
+import { routes } from '@/routes';
 import {
   AMENITY_OPTIONS,
   OCCUPANT_OPTIONS,
@@ -56,7 +56,6 @@ export default function PreferencesScreen() {
   const [errors, setErrors] = useState<ChecklistErrors>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savedVisible, setSavedVisible] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const innerTopRef = useRef(0);
@@ -112,7 +111,7 @@ export default function PreferencesScreen() {
     setSaving(true);
     try {
       await saveChecklist(userId, toChecklist(form));
-      setSavedVisible(true);
+      router.replace(routes.renterRecommended);
     } finally {
       setSaving(false);
     }
@@ -228,8 +227,6 @@ export default function PreferencesScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <SaveConfirmationModal visible={savedVisible} onClose={() => setSavedVisible(false)} />
     </View>
   );
 }
