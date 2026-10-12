@@ -147,16 +147,13 @@ export function DraggableMap({ point, onChange }: Props) {
       ))}
 
       <View
-        onStartShouldSetResponder={() => true}
-        onMoveShouldSetResponder={() => true}
-        onResponderGrant={(event) => {
+        onPointerDown={(event) => {
+          if (event.nativeEvent.button !== 0) return;
           beginDrag(event.nativeEvent.pageX, event.nativeEvent.pageY);
         }}
-        onResponderMove={(event) => {
-          moveDrag(event.nativeEvent.pageX, event.nativeEvent.pageY);
-        }}
-        onResponderRelease={endDrag}
-        onResponderTerminate={endDrag}
+        onPointerMove={(event) => moveDrag(event.nativeEvent.pageX, event.nativeEvent.pageY)}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         style={[styles.pin, { left: pinPixel.x - 18, top: pinPixel.y - 38 }]}
         accessibilityRole="image"
         accessibilityLabel="Draggable search point pin"
@@ -164,9 +161,7 @@ export function DraggableMap({ point, onChange }: Props) {
         <Ionicons name="location" size={36} color={colors.primary} />
       </View>
 
-      <Text style={styles.attribution} pointerEvents="none">
-        © OpenStreetMap
-      </Text>
+      <Text style={styles.attribution}>© OpenStreetMap</Text>
     </View>
   );
 }

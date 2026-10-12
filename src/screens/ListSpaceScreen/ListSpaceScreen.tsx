@@ -59,7 +59,7 @@ export default function ListSpaceScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <View pointerEvents="none" style={styles.decorativeShape} />
+      <View style={styles.decorativeShape} />
 
       <KeyboardAvoidingView
         style={styles.flex}

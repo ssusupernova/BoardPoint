@@ -141,7 +141,7 @@ export default function PreferencesScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <View pointerEvents="none" style={styles.decorativeCircle} />
+      <View style={styles.decorativeCircle} />
 
       <KeyboardAvoidingView
         style={styles.flex}

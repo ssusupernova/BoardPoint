@@ -84,10 +84,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: '#EFE3D3',
-    shadowColor: '#422B1F',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
+    boxShadow: '0 1px 4px rgba(66, 43, 31, 0.03)',
     elevation: 1,
   },
   cardPressed: {

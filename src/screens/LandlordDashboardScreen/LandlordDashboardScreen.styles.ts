@@ -17,6 +17,7 @@ export const styles = StyleSheet.create({
     height: 264,
     borderRadius: 132,
     backgroundColor: landlordColors.decorativeShape,
+    pointerEvents: 'none',
   },
   content: {
     flexGrow: 1,

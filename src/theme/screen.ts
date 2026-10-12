@@ -23,6 +23,7 @@ export const screenScaffold = {
     height: 280,
     borderRadius: 140,
     backgroundColor: colors.decorativeCircle,
+    pointerEvents: 'none' as const,
   },
   content: {
     flexGrow: 1,

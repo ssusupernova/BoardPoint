@@ -38,5 +38,6 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 2,
     overflow: 'hidden',
+    pointerEvents: 'none',
   },
 });
