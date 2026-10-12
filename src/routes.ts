@@ -5,8 +5,11 @@ import type { Href } from 'expo-router';
  *
  * Casting through `unknown` keeps this map independent of the generated route
  * union (`.expo/types/router.d.ts`), which is produced by the dev server.
+ * Declared as a hoisted function so the route map below can call it.
  */
-const href = (path: string): Href => path as unknown as Href;
+export function href(path: string | Href): Href {
+  return path as unknown as Href;
+}
 
 export const routes = {
   signIn: href('/'),
@@ -37,6 +40,24 @@ export const routes = {
   landlordLeases: href('/landlord/leases'),
   landlordProfile: href('/landlord/profile'),
   landlordListSpace: href('/landlord/list-space'),
+  home: href('/home'),
+  admin: href('/admin'),
+  adminVerification: href('/admin/verification'),
+  adminAccounts: href('/admin/accounts'),
+  adminModeration: href('/admin/moderation'),
+  adminReports: href('/admin/reports'),
+  adminAuditLogs: href('/admin/audit-logs'),
+  adminAnalytics: href('/admin/analytics'),
+  adminNotifications: href('/admin/notifications'),
+  adminSettings: href('/admin/settings'),
+} as const;
+
+/** Dynamic admin detail routes. */
+export const adminRoutes = {
+  application: (id: string) => href(`/admin/verification/${id}`),
+  account: (id: string) => href(`/admin/accounts/${id}`),
+  listing: (id: string) => href(`/admin/moderation/${id}`),
+  report: (id: string) => href(`/admin/reports/${id}`),
 } as const;
 
 export type DashboardRole = 'renter' | 'landlord';

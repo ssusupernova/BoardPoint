@@ -31,6 +31,7 @@ export default function RootLayout() {
 function RootNavigator() {
   const { session } = useAuthSession();
   const role = session?.user.role;
+  const isAdmin = role === 'super_admin';
 
   return (
     <Stack
@@ -39,6 +40,15 @@ function RootNavigator() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="home" />
+      </Stack.Protected>
+
+      {/* The whole admin panel is gated on an administrator role. */}
+      <Stack.Protected guard={isAdmin}>
+        <Stack.Screen name="admin" />
+      </Stack.Protected>
+      
       <Stack.Protected guard={!session}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/choose-role" />

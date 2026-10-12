@@ -16,6 +16,17 @@
 import { useSyncExternalStore } from 'react';
 import * as Crypto from 'expo-crypto';
 import { storageGet, storageSet } from '@/services/storage';
+import { ADMIN_SEED_ACCOUNTS } from './admin/adminAccounts';
+import type { AdminRole } from './admin/types';
+
+/**
+ * Roles carried by a session.
+ *
+ * `renter` / `landlord` pick a dashboard, `user` is a legacy account with no
+ * chosen role (it lands on the workspace home), and `super_admin` gates the
+ * `/admin` routes.
+ */
+export type UserRole = 'user' | 'renter' | 'landlord' | AdminRole;
 
 export class AuthNotConfiguredError extends Error {
   constructor(feature: string) {
@@ -40,7 +51,7 @@ export interface AuthSession {
     fullName: string;
     email: string;
     username: string;
-    role?: 'renter' | 'landlord';
+    role: UserRole;
   };
 }
 
@@ -81,7 +92,7 @@ interface StoredAccount {
   salt: string;
   passwordHash: string;
   createdAt: string;
-  role?: 'renter' | 'landlord';
+  role: UserRole;
 }
 
 type AccountIndexEntry = Pick<StoredAccount, 'id' | 'email' | 'username'>;
@@ -130,9 +141,54 @@ async function saveAccount(account: StoredAccount): Promise<void> {
       index = [];
     }
   }
+  if (index.some((entry) => entry.id === account.id)) return;
   index.push({ id: account.id, email: account.email, username: account.username });
   await storageSet('accounts.index', JSON.stringify(index));
 }
+
+/**
+ * Writes the demo administrator accounts (Gmail + password) into the local
+ * auth store on first launch so the admin panel is reachable immediately.
+ * Idempotent: accounts you created are left alone, while seeded accounts that
+ * were removed from `ADMIN_SEED_ACCOUNTS` are pruned.
+ */
+async function seedAdminAccounts(): Promise<void> {
+  const existing = await loadAccounts();
+  const known = new Set(existing.map((account) => account.id));
+  const seededIds = new Set(ADMIN_SEED_ACCOUNTS.map((admin) => admin.id));
+
+  for (const stale of existing) {
+    if (!stale.id.startsWith('adm-') || seededIds.has(stale.id)) continue;
+    await storageSet(`account.${stale.id}`, null);
+    const raw = await storageGet('accounts.index');
+    if (!raw) continue;
+    try {
+      const index = (JSON.parse(raw) as AccountIndexEntry[]).filter(
+        (entry) => entry.id !== stale.id
+      );
+      await storageSet('accounts.index', JSON.stringify(index));
+    } catch {
+      // A corrupt index is rebuilt by the next saveAccount call.
+    }
+  }
+
+  for (const admin of ADMIN_SEED_ACCOUNTS) {
+    if (known.has(admin.id)) continue;
+    const salt = `boardpoint.admin.${admin.id}`;
+    await saveAccount({
+      id: admin.id,
+      fullName: admin.fullName,
+      email: admin.email,
+      username: admin.username,
+      salt,
+      passwordHash: await hashPassword(admin.password, salt),
+      createdAt: new Date().toISOString(),
+      role: admin.role,
+    });
+  }
+}
+
+void seedAdminAccounts();
 
 /* ------------------------------------------------------------ store state */
 
