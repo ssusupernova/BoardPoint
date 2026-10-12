@@ -44,10 +44,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-    shadowColor: '#7C4E23',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
+    boxShadow: '0 6px 12px rgba(124, 78, 35, 0.22)',
     elevation: 4,
   },
   buttonPressed: {

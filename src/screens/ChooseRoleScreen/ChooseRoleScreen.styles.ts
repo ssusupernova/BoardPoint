@@ -17,6 +17,7 @@ export const styles = StyleSheet.create({
     height: 280,
     borderRadius: 140,
     backgroundColor: colors.decorativeCircle,
+    pointerEvents: 'none',
   },
   decorativeBottomLeft: {
     position: 'absolute',
@@ -27,6 +28,7 @@ export const styles = StyleSheet.create({
     borderRadius: 120,
     backgroundColor: '#F5E6D3',
     opacity: 0.85,
+    pointerEvents: 'none',
   },
   content: {
     flexGrow: 1,
@@ -79,10 +81,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
+    boxShadow: '0 4px 10px rgba(168, 95, 60, 0.22)',
     elevation: 3,
   },
   continueButtonPressed: {

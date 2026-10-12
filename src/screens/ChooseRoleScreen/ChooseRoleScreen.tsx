@@ -33,8 +33,8 @@ export default function ChooseRoleScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <View pointerEvents="none" style={styles.decorativeTopRight} />
-      <View pointerEvents="none" style={styles.decorativeBottomLeft} />
+      <View style={styles.decorativeTopRight} />
+      <View style={styles.decorativeBottomLeft} />
 
       <ScrollView
         style={styles.flex}
