@@ -34,6 +34,10 @@ export const styles = StyleSheet.create({
   section: {
     marginTop: spacing.xl,
   },
+  loading: {
+    marginTop: spacing.xxl,
+    alignItems: 'center',
+  },
   list: {
     gap: spacing.sm,
   },

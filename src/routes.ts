@@ -24,6 +24,10 @@ export const routes = {
   renterMaintenance: href('/renter/maintenance'),
   renterReportIssue: href('/renter/maintenance/new'),
   renterRooms: href('/renter/rooms'),
+  renterRecommended: href('/renter/recommended'),
+  renterApplications: href('/renter/applications'),
+  renterRoomsByCategory: (category: string) =>
+    href(`/renter/rooms?category=${encodeURIComponent(category)}`),
   renterHistory: href('/renter/history'),
   renterPaymentMethods: href('/renter/payment-methods'),
   renterProfileEdit: href('/renter/profile-edit'),

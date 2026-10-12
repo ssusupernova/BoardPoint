@@ -73,6 +73,12 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.primary,
   },
+  property: {
+    marginTop: 3,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -140,6 +146,24 @@ export const styles = StyleSheet.create({
   },
   action: {
     marginTop: spacing.xl,
+  },
+  statusCard: {
+    gap: spacing.md,
+    borderRadius: radii.lg,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    ...shadows.subtle,
+  },
+  statusText: {
+    fontFamily: fonts.regular,
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: colors.textSecondary,
+  },
+  secondaryAction: {
+    marginTop: spacing.sm,
   },
   note: {
     marginTop: spacing.md,

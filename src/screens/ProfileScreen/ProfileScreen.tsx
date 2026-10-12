@@ -13,6 +13,7 @@ import { routes } from '@/routes';
 import { authService, useAuthSession } from '@/services/auth';
 import { useIsVerifiedRenter, useMyRegistrations } from '@/services/landlordData';
 import { useRenterContact } from '@/services/profile';
+import { isVerifiedRenter, useRentalRequestsState } from '@/services/rentalRequests';
 import { MONTH_ABBRS, parseISODate } from '@/utils/date';
 import { formatPeso } from '@/utils/currency';
 import { styles } from './ProfileScreen.styles';
@@ -39,6 +40,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
   const contact = useRenterContact();
+  const { requests, ready } = useRentalRequestsState();
   const [signingOut, setSigningOut] = useState(false);
   const verified = useIsVerifiedRenter(session?.user.id ?? null);
   const registrations = useMyRegistrations(session?.user.id ?? null);
@@ -47,7 +49,11 @@ export default function ProfileScreen() {
 
   const fullName = session.user.fullName || renterProfile.fullName;
   const email = session.user.email || renterProfile.email;
+<<<<<<< HEAD
   const pendingCount = registrations.filter((item) => item.status === 'Pending').length;
+=======
+  const verified = isVerifiedRenter(requests);
+>>>>>>> momay
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -67,6 +73,7 @@ export default function ProfileScreen() {
       <View style={styles.hero}>
         <ProfileAvatar name={fullName} size={76} />
         <Text style={styles.name}>{fullName}</Text>
+<<<<<<< HEAD
         <View style={styles.verifyBadge}>
           {verified ? (
             <StatusBadge text="Verified renter" variant="success" dot />
@@ -76,6 +83,17 @@ export default function ProfileScreen() {
             <StatusBadge text="Not yet verified" variant="neutral" dot />
           )}
         </View>
+=======
+        {ready ? (
+          <View style={styles.verifyBadge}>
+            <StatusBadge
+              text={verified ? 'Verified renter' : 'Not yet verified'}
+              variant={verified ? 'success' : 'neutral'}
+              dot
+            />
+          </View>
+        ) : null}
+>>>>>>> momay
         <Text style={styles.memberSince}>{renterProfile.memberSince}</Text>
       </View>
 
@@ -93,46 +111,69 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHead}>
-          <SectionHeader title="Your tenancy" />
-          <StatusBadge text={renterTenancy.status} variant="success" dot />
-        </View>
-        <View style={styles.panel}>
-          <Text style={styles.tenancyName}>{renterTenancy.propertyName}</Text>
-          <Text style={styles.tenancyUnit}>
-            {renterTenancy.unitLabel} · {renterTenancy.address}
-          </Text>
-
-          <View style={styles.divider} />
-
-          <DetailRow
-            label="Lease period"
-            value={formatLeasePeriod(renterTenancy.leaseStartedAt, renterTenancy.leaseEndsAt)}
-          />
-          <DetailRow label="Monthly rent" value={formatPeso(renterTenancy.monthlyRent)} />
-          <DetailRow
-            label="Security deposit"
-            value={renterTenancy.depositHeld != null ? formatPeso(renterTenancy.depositHeld) : '—'}
-          />
-          <DetailRow
-            label="Rent due"
-            value={renterTenancy.rentDueDay ? `${ordinal(renterTenancy.rentDueDay)} of each month` : '—'}
-          />
-
-          <View style={styles.renewal}>
-            <Text style={styles.renewalTitle}>Renewal awaiting confirmation</Text>
-            <Text style={styles.renewalText}>
-              Your lease ends {formatLeasePeriod(renterTenancy.leaseStartedAt, renterTenancy.leaseEndsAt)}
-              . Contact your landlord to discuss your next stay.
-            </Text>
+      {ready && verified ? (
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <SectionHeader title="Your tenancy" />
+            <StatusBadge text={renterTenancy.status} variant="success" dot />
           </View>
+          <View style={styles.panel}>
+            <Text style={styles.tenancyName}>{renterTenancy.propertyName}</Text>
+            <Text style={styles.tenancyUnit}>
+              {renterTenancy.unitLabel} · {renterTenancy.address}
+            </Text>
 
-          <OutlineButton
-            label="View lease agreement"
-            icon="document-text-outline"
-            onPress={() => router.push(routes.renterTenancy)}
-            accessibilityLabel="View lease agreement"
+            <View style={styles.divider} />
+
+            <DetailRow
+              label="Lease period"
+              value={formatLeasePeriod(renterTenancy.leaseStartedAt, renterTenancy.leaseEndsAt)}
+            />
+            <DetailRow label="Monthly rent" value={formatPeso(renterTenancy.monthlyRent)} />
+            <DetailRow
+              label="Security deposit"
+              value={renterTenancy.depositHeld != null ? formatPeso(renterTenancy.depositHeld) : '—'}
+            />
+            <DetailRow
+              label="Rent due"
+              value={renterTenancy.rentDueDay ? `${ordinal(renterTenancy.rentDueDay)} of each month` : '—'}
+            />
+
+            <View style={styles.renewal}>
+              <Text style={styles.renewalTitle}>Renewal awaiting confirmation</Text>
+              <Text style={styles.renewalText}>
+                Your lease ends {formatLeasePeriod(renterTenancy.leaseStartedAt, renterTenancy.leaseEndsAt)}
+                . Contact your landlord to discuss your next stay.
+              </Text>
+            </View>
+
+            <OutlineButton
+              label="View lease agreement"
+              icon="document-text-outline"
+              onPress={() => router.push(routes.renterTenancy)}
+              accessibilityLabel="View lease agreement"
+            />
+          </View>
+        </View>
+      ) : null}
+
+      <View style={styles.section}>
+        <SectionHeader title="Your search" />
+        <View style={styles.panel}>
+          <SettingRow
+            icon="list-outline"
+            label="My room requests"
+            onPress={() => router.push(routes.renterApplications)}
+          />
+          <SettingRow
+            icon="options-outline"
+            label="Room preferences"
+            onPress={() => router.push(routes.preferences)}
+          />
+          <SettingRow
+            icon="sparkles-outline"
+            label="Recommended rooms"
+            onPress={() => router.push(routes.renterRecommended)}
           />
         </View>
       </View>

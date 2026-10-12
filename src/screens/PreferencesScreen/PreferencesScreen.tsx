@@ -21,6 +21,7 @@ import { LocationSection } from '@/components/renter/sections/LocationSection/Lo
 import { EssentialsSection } from '@/components/renter/sections/EssentialsSection/EssentialsSection';
 import { PreferencesSection } from '@/components/renter/sections/PreferencesSection/PreferencesSection';
 import { PrimaryButton } from '@/components/ui/PrimaryButton/PrimaryButton';
+import { routes } from '@/routes';
 import { useAuthSession } from '@/services/auth';
 import { routes } from '@/routes';
 import {
@@ -227,6 +228,19 @@ export default function PreferencesScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+<<<<<<< HEAD
+=======
+
+      <SaveConfirmationModal
+        visible={savedVisible}
+        onClose={() => setSavedVisible(false)}
+        actionLabel="See recommended rooms"
+        onAction={() => {
+          setSavedVisible(false);
+          router.push(routes.renterRecommended);
+        }}
+      />
+>>>>>>> momay
     </View>
   );
 }
