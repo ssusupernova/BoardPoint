@@ -45,4 +45,7 @@ export const styles = StyleSheet.create({
     alignSelf: 'stretch',
     marginTop: spacing.lg,
   },
+  secondaryWrap: {
+    marginTop: spacing.sm,
+  },
 });

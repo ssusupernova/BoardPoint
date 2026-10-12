@@ -14,13 +14,41 @@ import type {
 } from './types';
 
 /**
+ * Marketplace categories shown as horizontal carousels on the Recommended
+ * Rooms page. Kept in the renter data layer so the shared domain types stay
+ * untouched.
+ */
+export type RoomCategory = 'Village House' | 'Condo' | 'Apartment' | 'Boarding House';
+
+/** Display order of the category carousels. */
+export const ROOM_CATEGORY_ORDER: RoomCategory[] = [
+  'Village House',
+  'Condo',
+  'Apartment',
+  'Boarding House',
+];
+
+/**
+ * A browsable room plus its marketplace category. Extends the shared
+ * `RenterRoom` shape so existing consumers keep working.
+ */
+export interface RenterListing extends RenterRoom {
+  category: RoomCategory;
+  /** Property/complex the room belongs to (shown on requests + listings). */
+  propertyName: string;
+  /** Promoted listing: renders a gold outline and a SPECIAL badge. */
+  featured?: boolean;
+}
+
+/**
  * Rooms the renter can browse. The `isFavorite` flag seeds the favorites store;
  * the first two are the renter's saved shortlist.
  */
-export const renterMockRooms: RenterRoom[] = [
+export const renterMockRooms: RenterListing[] = [
   {
     id: 'room-city-garden',
     title: 'City Garden Rooms',
+    propertyName: 'City Garden Residences',
     area: 'Sta. Cruz, Dapitan City',
     roomType: 'Private room',
     price: 5200,
@@ -34,10 +62,13 @@ export const renterMockRooms: RenterRoom[] = [
     amenities: ['Furnished', 'Laundry', 'Non-smoking'],
     availabilityLabel: 'Available by 15 Oct',
     isFavorite: true,
+    category: 'Boarding House',
+    featured: true,
   },
   {
     id: 'room-north-haven',
     title: 'North Haven Boarding House',
+    propertyName: 'North Haven Boarding House',
     area: 'Tambak, Dapitan City',
     roomType: 'Private room',
     price: 5800,
@@ -51,10 +82,12 @@ export const renterMockRooms: RenterRoom[] = [
     amenities: ['Furnished', 'No curfew', 'Non-smoking'],
     availabilityLabel: 'Available by 15 Oct',
     isFavorite: true,
+    category: 'Boarding House',
   },
   {
     id: 'room-studio-university',
     title: 'Studio Unit near University',
+    propertyName: 'La Torre Apartelle',
     area: 'Poblacion, La Torre St.',
     roomType: 'Private room',
     price: 3500,
@@ -68,10 +101,12 @@ export const renterMockRooms: RenterRoom[] = [
     amenities: ['Furnished', 'Cooking allowed', 'Non-smoking'],
     availabilityLabel: 'Available by 01 Nov',
     isFavorite: false,
+    category: 'Apartment',
   },
   {
     id: 'room-aircon-dorm',
     title: 'Aircon Dormitory Bed',
+    propertyName: 'San Roque Dormitory',
     area: 'San Roque, Dapitan City',
     roomType: 'Shared room',
     price: 2200,
@@ -85,6 +120,123 @@ export const renterMockRooms: RenterRoom[] = [
     amenities: ['Air-conditioned', 'Non-smoking'],
     availabilityLabel: 'Available now',
     isFavorite: false,
+    category: 'Boarding House',
+  },
+  {
+    id: 'room-sunrise-family',
+    title: 'Sunrise Village Family Room',
+    propertyName: 'Sunrise Village Homes',
+    area: 'Poblacion, Dapitan City',
+    roomType: 'Private room',
+    price: 4800,
+    distanceKm: 1.8,
+    distanceFromLabel: 'Sta. Cruz',
+    matchPercent: 90,
+    roomLabel: 'Family Room',
+    privacy: 'Private',
+    occupancy: '4 persons',
+    featureBadges: ['Wi-Fi', 'Private bathroom'],
+    amenities: ['Furnished', 'Kitchen access', 'Water included', 'Non-smoking'],
+    availabilityLabel: 'Available now',
+    isFavorite: false,
+    category: 'Village House',
+  },
+  {
+    id: 'room-sunrise-twin',
+    title: 'Sunrise Village Twin Room',
+    propertyName: 'Sunrise Village Homes',
+    area: 'Poblacion, Dapitan City',
+    roomType: 'Private room',
+    price: 4200,
+    distanceKm: 1.8,
+    distanceFromLabel: 'Sta. Cruz',
+    matchPercent: 86,
+    roomLabel: 'Twin Room',
+    privacy: 'Private',
+    occupancy: '2 persons',
+    featureBadges: ['Wi-Fi', 'Private bathroom'],
+    amenities: ['Furnished', 'Water included', 'No curfew', 'Non-smoking'],
+    availabilityLabel: 'Available now',
+    isFavorite: false,
+    category: 'Village House',
+  },
+  {
+    id: 'room-palm-studio',
+    title: 'Palm Condo Studio',
+    propertyName: 'Palm Street Condominium',
+    area: 'San Roque, Dapitan City',
+    roomType: 'Private room',
+    price: 5500,
+    distanceKm: 2.3,
+    distanceFromLabel: 'Sta. Cruz',
+    matchPercent: 84,
+    roomLabel: 'Studio',
+    privacy: 'Private',
+    occupancy: '2 persons',
+    featureBadges: ['Wi-Fi', 'Air conditioning'],
+    amenities: ['Furnished', 'Private bathroom', 'Electricity included', 'Non-smoking'],
+    availabilityLabel: 'Available by 20 Oct',
+    isFavorite: false,
+    category: 'Condo',
+  },
+  {
+    id: 'room-dahlia-loft',
+    title: 'Dahlia Apartments Loft',
+    propertyName: 'Dahlia Heights',
+    area: 'Providencia, Dapitan City',
+    roomType: 'Shared room',
+    price: 5200,
+    distanceKm: 3.4,
+    distanceFromLabel: 'Sta. Cruz',
+    matchPercent: 78,
+    roomLabel: 'Loft',
+    privacy: 'Shared',
+    occupancy: '3 persons',
+    featureBadges: ['Wi-Fi', 'Private bathroom'],
+    amenities: ['Furnished', 'Laundry', 'Visitors allowed', 'Non-smoking'],
+    availabilityLabel: 'Available now',
+    isFavorite: false,
+    category: 'Apartment',
+  },
+];
+
+/* ------------------------------------------------- rental request / registration */
+
+export type RentalRequestStatus = 'Pending' | 'Confirmed' | 'Declined';
+
+/**
+ * A renter's request for a marketplace room. Stored on-device per account by
+ * `services/rentalRequests`. A `Confirmed` record is what backs the Verified
+ * Renter badge on the renter profile.
+ */
+export interface RentalRequest {
+  id: string;
+  roomId: string;
+  roomTitle: string;
+  propertyName: string;
+  monthlyRent: number;
+  status: RentalRequestStatus;
+  /** ISO yyyy-mm-dd the request was submitted. */
+  submittedAt: string;
+  /** ISO yyyy-mm-dd the landlord decided; absent while pending. */
+  decidedAt?: string;
+}
+
+/**
+ * Demo seed so the registration status and Verified Renter badge are
+ * visualizable in this mock app (same convention as `renterTenancy`). The
+ * confirmed record is replaced by real data once the backend exists.
+ */
+export const renterSeedRentalRequests: RentalRequest[] = [
+  {
+    id: 'req-seed-1',
+    roomId: 'room-studio-university',
+    roomTitle: 'Studio Unit near University',
+    propertyName: 'La Torre Apartelle',
+    monthlyRent: 3500,
+    status: 'Confirmed',
+    submittedAt: '2026-09-05',
+    decidedAt: '2026-09-07',
   },
 ];
 
