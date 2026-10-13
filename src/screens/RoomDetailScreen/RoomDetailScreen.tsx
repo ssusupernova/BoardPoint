@@ -71,6 +71,14 @@ export default function RoomDetailScreen() {
     }
     setRequesting(true);
     try {
+      await submitRentalRequest({
+        roomId: room.id,
+        roomTitle: room.title,
+        propertyName: room.propertyName,
+        address: room.area,
+        monthlyRent: room.price,
+      });
+      router.push(routes.renterApplications);
       await submitRentalRequest({ renterId, renterName, roomRefId: room.id });
     } catch (error) {
       const message =
@@ -173,6 +181,67 @@ export default function RoomDetailScreen() {
       </View>
 
       <View style={styles.action}>
+        {requestState === 'confirmed' ? (
+          <View style={styles.statusCard}>
+            <StatusBadge text="Confirmed" variant="success" dot />
+            <Text style={styles.statusText}>
+              You&apos;re an active renter — this room is confirmed for you.
+            </Text>
+            <OutlineButton
+              label="View my requests"
+              icon="list-outline"
+              onPress={() => router.push(routes.renterApplications)}
+            />
+          </View>
+        ) : requestState === 'pending' && request ? (
+          <View style={styles.statusCard}>
+            <StatusBadge text="Pending" variant="info" dot />
+            <Text style={styles.statusText}>
+              Request sent {formatDisplayDate(request.submittedAt)}. Waiting for the landlord to
+              confirm.
+            </Text>
+            <OutlineButton
+              label="View my requests"
+              icon="list-outline"
+              onPress={() => router.push(routes.renterApplications)}
+            />
+            <OutlineButton
+              label="Cancel request"
+              icon="close-outline"
+              onPress={() => void cancelRentalRequest(request.id)}
+            />
+          </View>
+        ) : requestState === 'declined' ? (
+          <View style={styles.statusCard}>
+            <StatusBadge text="Declined" />
+            <Text style={styles.statusText}>
+              This request wasn&apos;t approved. You can send a new request.
+            </Text>
+            <PrimaryButton
+              label="Request again"
+              icon="refresh-outline"
+              onPress={() => void handleRequest()}
+              loading={submitting}
+            />
+          </View>
+        ) : (
+          <PrimaryButton
+            label="Send rental request"
+            icon="paper-plane-outline"
+            onPress={() => void handleRequest()}
+            loading={submitting}
+            accessibilityLabel={`Send a rental request for ${room.title}`}
+          />
+        )}
+
+        <View style={styles.secondaryAction}>
+          <OutlineButton
+            label={isFavorite ? 'Saved to favorites' : 'Save this room'}
+            icon="heart-outline"
+            onPress={() => void toggleFavoriteRoom(room.id)}
+            accessibilityLabel={isFavorite ? 'Remove from saved rooms' : 'Save this room'}
+          />
+        </View>
         <PrimaryButton label={requestLabel} onPress={() => void handleRequest()} loading={requesting} disabled={requestDisabled} />
       </View>
 

@@ -227,6 +227,16 @@ export default function PreferencesScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <SaveConfirmationModal
+        visible={savedVisible}
+        onClose={() => setSavedVisible(false)}
+        actionLabel="Go to my dashboard"
+        onAction={() => {
+          setSavedVisible(false);
+          router.replace(routes.renterDashboard);
+        }}
+      />
     </View>
   );
 }

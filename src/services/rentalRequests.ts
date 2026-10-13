@@ -11,8 +11,10 @@
  * profile account is seeded with one confirmed registration so the "has a room"
  * experience stays demoable — the same convention used by `renterTenancy`.
  *
- * Renter-only: the landlord-side approval workflow lives on the backend and is
- * intentionally out of scope here.
+ * Renter-only: for now a submitted request is auto-accepted after a short delay
+ * by a mock landlord so the accepted-renter experience (notification, payments,
+ * Active Renter badge) is demoable. Swap `AUTO_ACCEPT_MS`/`confirmRequest` for
+ * the real landlord accept/decline action on the backend later.
  */
 
 import { useEffect, useSyncExternalStore } from 'react';
@@ -22,15 +24,27 @@ import {
   type RentalRequest,
   type RentalRequestStatus,
 } from '@/data/renter';
+import type { AppNotification, Tenancy } from '@/data/mock';
 import { useAuthSession } from '@/services/auth';
+import { addNotification } from '@/services/notifications';
 import { storageGet, storageSet } from '@/services/storage';
-import { toISODate } from '@/utils/date';
+import { MONTH_ABBRS, toISODate } from '@/utils/date';
+
+/**
+ * How long a submitted request stays pending before the mock "landlord"
+ * auto-accepts it. Mirrors the real approval flow so the notification, payments
+ * and Active Renter badge can be demonstrated end-to-end. Replace with a real
+ * landlord accept/decline action on the backend later.
+ */
+const AUTO_ACCEPT_MS = 15_000;
+const LEASE_LENGTH_MONTHS = 6;
 
 let userId: string | null = null;
 let boundUserId: string | null = null;
 let requests: RentalRequest[] = [];
 let hydratedFor: string | null = null;
 const listeners = new Set<() => void>();
+const confirmTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function emit(): void {
   for (const listener of listeners) listener();
@@ -168,6 +182,13 @@ async function bind(nextUserId: string | null, email: string): Promise<void> {
   setRequests(mergeLedger(base, nextUserId));
 }
 
+/** Re-arm the mock approval for any request still pending after a reload. */
+function resumePending(): void {
+  for (const request of requests) {
+    if (request.status === 'Pending') scheduleConfirm(request.id);
+  }
+}
+
 /**
  * Subscribe to the signed-in renter's full request list. Mounted by the renter
  * screens, so it also drives per-account rebinding on sign-in / sign-out.
@@ -179,7 +200,7 @@ export function useRentalRequests(): RentalRequest[] {
   const email = session?.user.email ?? '';
 
   useEffect(() => {
-    void bind(id, email);
+    void bind(id, email).then(resumePending);
   }, [id, email]);
 
   return snapshot;
@@ -198,7 +219,7 @@ export function useRentalRequestsState(): { requests: RentalRequest[]; ready: bo
   const email = session?.user.email ?? '';
 
   useEffect(() => {
-    void bind(id, email);
+    void bind(id, email).then(resumePending);
   }, [id, email]);
 
   return { requests: snapshot, ready: id !== null && bound === id };
@@ -260,18 +281,104 @@ export function activeRequests(list: RentalRequest[]): RentalRequest[] {
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
 }
 
+/* ------------------------------------------------------------------- tenancy */
+
+function addMonths(iso: string, months: number): string {
+  const date = new Date(`${iso}T00:00:00`);
+  date.setMonth(date.getMonth() + months);
+  return toISODate(date);
+}
+
+/** Build the live tenancy for a confirmed request (mock lease terms). */
+export function tenancyFromRequest(request: RentalRequest): Tenancy {
+  const start = request.decidedAt ?? request.submittedAt;
+  return {
+    id: `tenancy-${request.id}`,
+    propertyName: request.propertyName,
+    unitLabel: request.roomTitle,
+    address: request.address,
+    monthlyRent: request.monthlyRent,
+    leaseStartedAt: start,
+    leaseEndsAt: addMonths(start, LEASE_LENGTH_MONTHS),
+    status: 'Active',
+    depositHeld: request.monthlyRent,
+    rentDueDay: 20,
+  };
+}
+
+/** The tenancy formed by the renter's confirmed registration, if any. */
+export function activeTenancy(list: RentalRequest[]): Tenancy | null {
+  const confirmed = list.find((request) => request.status === 'Confirmed');
+  return confirmed ? tenancyFromRequest(confirmed) : null;
+}
+
+/** Subscribe to the renter's current tenancy (null while still browsing). */
+export function useActiveTenancy(): Tenancy | null {
+  const list = useRentalRequests();
+  return activeTenancy(list);
+}
+
 /* ------------------------------------------------------------------ mutations */
 
 export interface RentalRequestInput {
   roomId: string;
   roomTitle: string;
   propertyName: string;
+  address: string;
   monthlyRent: number;
 }
 
 async function persist(): Promise<void> {
   if (!userId) return;
   await storageSet(storageKeyFor(userId), JSON.stringify(requests));
+}
+
+function acceptanceTimestamp(date: Date): string {
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${date.getDate()} ${MONTH_ABBRS[date.getMonth()]} · ${hour12}:${minutes} ${period}`;
+}
+
+function acceptanceNotification(request: RentalRequest, decidedAt: string): AppNotification {
+  return {
+    id: `notif-accepted-${request.id}`,
+    category: 'rent',
+    day: 'today',
+    timestampLabel: acceptanceTimestamp(new Date()),
+    title: 'Rental request accepted',
+    description: `Your request for ${request.roomTitle} at ${request.propertyName} was accepted. Welcome home!`,
+    statusLabel: 'Confirmed',
+  };
+}
+
+/**
+ * Move a pending request to Confirmed (the mock landlord approving it) and drop
+ * an acceptance notification into the alerts feed. No-op for already-decided
+ * requests so the timer and the persisted state can't double-fire.
+ */
+async function confirmRequest(id: string): Promise<void> {
+  const target = requests.find((request) => request.id === id);
+  if (!target || target.status !== 'Pending') return;
+
+  const decidedAt = toISODate(new Date());
+  const decided: RentalRequest = { ...target, status: 'Confirmed', decidedAt };
+  setRequests(requests.map((request) => (request.id === id ? decided : request)));
+  await Promise.all([
+    persist(),
+    addNotification(acceptanceNotification(decided, decidedAt)),
+  ]);
+}
+
+/** Schedule the mock approval for a pending request (idempotent per id). */
+function scheduleConfirm(id: string): void {
+  if (confirmTimers.has(id)) return;
+  const timer = setTimeout(() => {
+    confirmTimers.delete(id);
+    void confirmRequest(id);
+  }, AUTO_ACCEPT_MS);
+  confirmTimers.set(id, timer);
 }
 
 /**
@@ -290,6 +397,7 @@ export async function submitRentalRequest(
     roomId: input.roomId,
     roomTitle: input.roomTitle,
     propertyName: input.propertyName,
+    address: input.address,
     monthlyRent: input.monthlyRent,
     status: 'Pending' satisfies RentalRequestStatus,
     submittedAt: toISODate(new Date()),
@@ -297,6 +405,7 @@ export async function submitRentalRequest(
 
   setRequests([...requests.filter((entry) => entry.roomId !== input.roomId), request]);
   await persist();
+  scheduleConfirm(request.id);
   return request;
 }
 

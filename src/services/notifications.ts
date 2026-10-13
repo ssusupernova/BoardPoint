@@ -19,6 +19,12 @@ import { storageGet, storageSet } from '@/services/storage';
 import { MONTH_ABBRS } from '@/utils/date';
 import * as Crypto from 'expo-crypto';
 
+const READ_KEY = 'notifications.read';
+const ADDED_KEY = 'notifications.added';
+
+const seeded: AppNotification[] = renterNotifications.map((item) => ({ ...item }));
+let added: AppNotification[] = [];
+let notifications: AppNotification[] = [...added, ...seeded];
 const STORAGE_KEY = 'notifications.read';
 const PUSHED_KEY = 'notifications.pushed';
 
@@ -62,6 +68,50 @@ export function useUnreadCount(): number {
 }
 
 async function persistReadIds(): Promise<void> {
+  const readIds = notifications.filter((item) => item.read).map((item) => item.id);
+  await storageSet(READ_KEY, JSON.stringify(readIds));
+}
+
+async function persistAdded(): Promise<void> {
+  await storageSet(ADDED_KEY, JSON.stringify(added));
+}
+
+/**
+ * Adds a runtime notification (e.g. a rental request being accepted) to the top
+ * of the feed and persists it so it survives a reload. Read state is tracked
+ * separately, so a freshly added item starts unread.
+ */
+export async function addNotification(notification: AppNotification): Promise<void> {
+  if (notifications.some((item) => item.id === notification.id)) return;
+  added = [{ ...notification }, ...added];
+  setNotifications([{ ...notification }, ...notifications]);
+  await persistAdded();
+}
+
+async function hydrate(): Promise<void> {
+  if (hydrated) return;
+  hydrated = true;
+  const [rawRead, rawAdded] = await Promise.all([
+    storageGet(READ_KEY),
+    storageGet(ADDED_KEY),
+  ]);
+
+  try {
+    const parsedAdded = rawAdded ? (JSON.parse(rawAdded) as AppNotification[]) : [];
+    if (Array.isArray(parsedAdded)) {
+      added = parsedAdded;
+      notifications = [...added.map((item) => ({ ...item })), ...seeded.map((item) => ({ ...item }))];
+    }
+  } catch {
+    // Ignore malformed cache and keep the seeded feed.
+  }
+
+  if (!rawRead) {
+    emit();
+    return;
+  }
+  try {
+    const parsed = JSON.parse(rawRead) as string[];
   const ids = notifications.filter((item) => item.read).map((item) => item.id);
   await storageSet(STORAGE_KEY, JSON.stringify(ids));
 }

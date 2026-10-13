@@ -8,11 +8,11 @@ import { MaintenanceCard } from '@/components/renter/dashboard/MaintenanceCard/M
 import { PaymentOverviewCard } from '@/components/renter/dashboard/PaymentOverviewCard/PaymentOverviewCard';
 import { PropertyCard } from '@/components/renter/dashboard/PropertyCard/PropertyCard';
 import { ReminderCard } from '@/components/renter/dashboard/ReminderCard/ReminderCard';
-import { renterPaymentOverview, renterReminders, renterTenancy } from '@/data/mock';
+import { renterPaymentOverview, renterReminders } from '@/data/mock';
 import { routes } from '@/routes';
 import { useAuthSession } from '@/services/auth';
 import { useMaintenanceTickets } from '@/services/maintenance';
-import { isVerifiedRenter, useRentalRequestsState } from '@/services/rentalRequests';
+import { activeTenancy, isVerifiedRenter, useRentalRequestsState } from '@/services/rentalRequests';
 import { colors } from '@/theme';
 import { formatLongDate } from '@/utils/date';
 import { styles } from './RenterDashboardScreen.styles';
@@ -41,8 +41,9 @@ export default function RenterDashboardScreen() {
   }
 
   const hasRoom = isVerifiedRenter(requests);
+  const tenancy = activeTenancy(requests);
 
-  if (!hasRoom) {
+  if (!hasRoom || !tenancy) {
     return (
       <RenterScreen active="home">
         <Text style={styles.eyebrow}>Renter dashboard</Text>
@@ -71,7 +72,7 @@ export default function RenterDashboardScreen() {
       <View style={styles.section}>
         <SectionHeader title="Your Home" />
         <PropertyCard
-          tenancy={renterTenancy}
+          tenancy={tenancy}
           onViewTenancy={() => router.push(routes.renterTenancy)}
         />
       </View>

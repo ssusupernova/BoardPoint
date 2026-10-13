@@ -97,7 +97,7 @@ export default function MyRequestsScreen() {
             <View style={styles.banner}>
               <Ionicons name="shield-checkmark" size={18} color={colors.successText} />
               <Text style={styles.bannerText}>
-                You&apos;re a verified renter — one registration is confirmed.
+                You&apos;re an active renter — one registration is confirmed.
               </Text>
             </View>
           ) : null}
