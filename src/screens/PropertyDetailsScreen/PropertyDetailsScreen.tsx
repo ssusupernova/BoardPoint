@@ -36,7 +36,7 @@ import { formatPeso } from '@/utils/currency';
 import { toErrorMessage } from '@/utils/errors';
 import { ListingStatusBadge } from '@/components/landlord/ListingStatusBadge';
 import { AmenityPicker } from '@/components/landlord/property/AmenityPicker';
-import { PropertyMapPicker } from '@/components/landlord/property/PropertyMapPicker';
+import { PropertyLocationForm } from '@/components/landlord/property/PropertyLocationForm';
 import { PropertyPhotoGrid } from '@/components/landlord/property/PropertyPhotoGrid';
 import { RoomManager } from '@/components/landlord/property/RoomManager';
 import { propertyFormStyles as form } from '@/components/landlord/property/propertyFormStyles';
@@ -53,7 +53,7 @@ const CHECKLIST: { key: PublishField; label: string }[] = [
   { key: 'region', label: 'Region' },
   { key: 'city', label: 'City or municipality' },
   { key: 'barangay', label: 'Barangay' },
-  { key: 'mapLocationSet', label: 'Map location pinned' },
+  { key: 'mapLocationSet', label: 'Location confirmed' },
   { key: 'photos', label: 'At least one photo' },
   { key: 'contactName', label: 'Contact name' },
   { key: 'contactPhone', label: 'Contact number' },
@@ -90,6 +90,8 @@ export default function PropertyDetailsScreen() {
       ? { latitude: property.latitude, longitude: property.longitude }
       : DEFAULT_MAP_POINT
   );
+  const [locationAddress, setLocationAddress] = useState(property?.address ?? '');
+  const [locationConfirmed, setLocationConfirmed] = useState(property?.mapLocationSet ?? false);
   const [rulesDraft, setRulesDraft] = useState(property?.houseRules ?? '');
   const [editingRules, setEditingRules] = useState(false);
 
@@ -147,18 +149,34 @@ export default function PropertyDetailsScreen() {
     await removePropertyPhoto(property.id, uri, landlordId);
   };
 
-  const saveLocation = async () => {
+  const onLocationAddressChange = (text: string) => {
+    setLocationAddress(text);
+    setLocationConfirmed(false);
+  };
+
+  const onLocationPointChange = (point: GeoPoint) => {
+    setMapPoint(point);
+    setLocationConfirmed(false);
+  };
+
+  const saveLocation = async (point: GeoPoint) => {
     if (!property) return;
+    const trimmedAddress = locationAddress.trim();
     await updateProperty(
       property.id,
       {
-        latitude: mapPoint.latitude,
-        longitude: mapPoint.longitude,
+        latitude: point.latitude,
+        longitude: point.longitude,
         mapLocationSet: true,
+        ...(trimmedAddress ? { address: trimmedAddress } : {}),
       },
       landlordId
     );
-    Alert.alert('Location saved', 'The map pin has been updated for this property.');
+    setLocationConfirmed(true);
+    Alert.alert(
+      'Location saved',
+      `Confirmed at ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}.`
+    );
   };
 
   const saveRules = async () => {
@@ -395,8 +413,8 @@ export default function PropertyDetailsScreen() {
                 </Text>
                 <Text style={form.sectionHint}>
                   {property.mapLocationSet
-                    ? `Pinned at ${property.latitude.toFixed(5)}, ${property.longitude.toFixed(5)}`
-                    : 'Map location has not been pinned yet.'}
+                    ? `Confirmed at ${property.latitude.toFixed(5)}, ${property.longitude.toFixed(5)}`
+                    : 'Location has not been confirmed yet.'}
                 </Text>
               </View>
 
@@ -489,22 +507,22 @@ export default function PropertyDetailsScreen() {
           {/* Location */}
           {tab === 'Location' ? (
             <View style={form.sectionCard}>
-              <Text style={form.sectionTitle}>Map location</Text>
-              <PropertyMapPicker point={mapPoint} onChange={setMapPoint} />
-              <View style={st.locationActions}>
-                <Pressable
-                  onPress={() => void saveLocation()}
-                  style={({ pressed }) => [form.primaryButton, pressed && form.primaryButtonPressed]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Save map location"
-                >
-                  <Ionicons name="location" size={16} color={LANDLORD_THEME.onPrimary} />
-                  <Text style={form.primaryButtonText}>Save Location</Text>
-                </Pressable>
-              </View>
+              <Text style={form.sectionTitle}>Property location</Text>
+              <PropertyLocationForm
+                address={locationAddress}
+                onAddressChange={onLocationAddressChange}
+                point={mapPoint}
+                onPointChange={onLocationPointChange}
+                confirmed={locationConfirmed}
+                onConfirm={(point) => void saveLocation(point)}
+              />
               <Text style={form.sectionHint}>
                 Saved coordinates: {property.latitude.toFixed(5)}, {property.longitude.toFixed(5)}
-                {property.mapLocationSet ? '' : ' (not pinned yet)'}
+                {property.mapLocationSet ? '' : ' (location not confirmed yet)'}
+              </Text>
+              <Text style={form.sectionHint}>
+                Renters only see this listing address — tenant names, unit numbers they occupy,
+                and their addresses are never shown on the map.
               </Text>
             </View>
           ) : null}

@@ -35,7 +35,7 @@ import { landlordPropertyDetails, routes } from '@/routes';
 import { toErrorMessage } from '@/utils/errors';
 import { ListingStatusBadge } from '@/components/landlord/ListingStatusBadge';
 import { AmenityPicker } from '@/components/landlord/property/AmenityPicker';
-import { PropertyMapPicker } from '@/components/landlord/property/PropertyMapPicker';
+import { PropertyLocationForm } from '@/components/landlord/property/PropertyLocationForm';
 import { PropertyPhotoGrid } from '@/components/landlord/property/PropertyPhotoGrid';
 import { RoomManager } from '@/components/landlord/property/RoomManager';
 import { propertyFormStyles as form } from '@/components/landlord/property/propertyFormStyles';
@@ -258,7 +258,20 @@ export default function AddPropertyScreen() {
     });
   };
 
+  const onAddressChange = (text: string) => {
+    // The address belongs to the location record: editing it requires a fresh
+    // confirmation before the coordinates can be considered saved.
+    setFormState((prev) => ({ ...prev, address: text, mapLocationSet: false }));
+    setErrors((prev) => ({ ...prev, address: undefined, mapLocationSet: undefined }));
+  };
+
   const onMapChange = (point: GeoPoint) => {
+    // Moving the pin invalidates any previous confirmation — the landlord must
+    // tap Confirm Location again before the coordinates count as saved.
+    patch({ latitude: point.latitude, longitude: point.longitude, mapLocationSet: false });
+  };
+
+  const onMapConfirm = (point: GeoPoint) => {
     patch({ latitude: point.latitude, longitude: point.longitude, mapLocationSet: true });
   };
 
@@ -349,6 +362,14 @@ export default function AddPropertyScreen() {
     if (!formState.name.trim()) {
       setErrors({ name: 'Property name is required.' });
       Alert.alert('Name required', 'Property name cannot be empty.');
+      return;
+    }
+    if (!formState.mapLocationSet) {
+      setErrors({ mapLocationSet: 'Confirm the property location before saving.' });
+      Alert.alert(
+        'Confirm the location',
+        'Drag the pin to the right spot and tap Confirm Location so the saved coordinates are correct.'
+      );
       return;
     }
     await updateProperty(property.id, formState, landlordId);
@@ -463,15 +484,6 @@ export default function AddPropertyScreen() {
               <Text style={form.sectionTitle}>Address</Text>
               <View style={st.sectionFields}>
                 <Field
-                  label="Full address"
-                  value={formState.address}
-                  onChangeText={(text) => setField('address', text)}
-                  placeholder="Street, block, or landmark"
-                  multiline
-                  icon="location-outline"
-                  error={errors.address}
-                />
-                <Field
                   label="Region"
                   value={formState.region}
                   onChangeText={(text) => setField('region', text)}
@@ -493,20 +505,25 @@ export default function AddPropertyScreen() {
                   error={errors.barangay}
                 />
               </View>
+              <Text style={form.sectionHint}>
+                The full street address is set in Property Location below — search for it, or drop
+                the pin and confirm.
+              </Text>
             </View>
 
-            {/* Map */}
+            {/* Property location */}
             <View style={form.sectionCard}>
-              <Text style={form.sectionTitle}>Map Location</Text>
-              <PropertyMapPicker
+              <Text style={form.sectionTitle}>Property Location</Text>
+              <PropertyLocationForm
+                address={formState.address}
+                onAddressChange={onAddressChange}
                 point={{ latitude: formState.latitude, longitude: formState.longitude }}
-                onChange={onMapChange}
-                error={errors.mapLocationSet}
+                onPointChange={onMapChange}
+                confirmed={formState.mapLocationSet}
+                onConfirm={onMapConfirm}
+                addressError={errors.address}
+                locationError={errors.mapLocationSet}
               />
-              <Text style={form.sectionHint}>
-                Drag the pin to the exact property location. Latitude and longitude are saved
-                from this pin.
-              </Text>
             </View>
 
             {/* Photos */}

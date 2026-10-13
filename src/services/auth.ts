@@ -80,6 +80,19 @@ export interface AuthService {
   signUp(credentials: SignUpCredentials): Promise<AuthSession>;
   resetPassword(identifier: string): Promise<void>;
   signOut(): Promise<void>;
+  /** Updates the signed-in account's display name (no reauthentication needed). */
+  updateProfile(updates: { fullName?: string }): Promise<void>;
+  /**
+   * Changes the account password. Verifying `currentPassword` is the
+   * reauthentication step required before this sensitive change.
+   */
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
+  /**
+   * Changes the sign-in email. Verifying `currentPassword` is the
+   * reauthentication step; a real backend would additionally send a
+   * confirmation link to the new address before the change takes effect.
+   */
+  updateEmail(newEmail: string, currentPassword: string): Promise<void>;
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -141,8 +154,18 @@ async function saveAccount(account: StoredAccount): Promise<void> {
       index = [];
     }
   }
-  if (index.some((entry) => entry.id === account.id)) return;
-  index.push({ id: account.id, email: account.email, username: account.username });
+  const entry: AccountIndexEntry = {
+    id: account.id,
+    email: account.email,
+    username: account.username,
+  };
+  const existing = index.findIndex((item) => item.id === account.id);
+  if (existing >= 0) {
+    // Upsert so an email/username change is reflected in the index too.
+    index[existing] = entry;
+  } else {
+    index.push(entry);
+  }
   await storageSet('accounts.index', JSON.stringify(index));
 }
 
@@ -246,6 +269,37 @@ async function restoreSession(): Promise<void> {
 
 void restoreSession();
 
+/* ----------------------------------------------------- account mutations */
+
+/** Loads the stored account behind the signed-in session, or throws. */
+async function requireCurrentAccount(): Promise<StoredAccount> {
+  const session = authState.session;
+  if (!session) {
+    throw new Error('You are signed out. Please sign in again to continue.');
+  }
+  const account = await readAccount(session.user.id);
+  if (!account) {
+    throw new Error("We couldn't load your account. Please sign in again.");
+  }
+  return account;
+}
+
+/**
+ * Publishes `account` as both the stored record and the live session. When a
+ * persisted session exists (the user chose "Remember me"), the stored copy is
+ * refreshed too so the new details survive an app restart.
+ */
+async function applyAccountUpdate(account: StoredAccount): Promise<AuthSession> {
+  await saveAccount(account);
+  const session = toSession(account);
+  const persisted = await storageGet('session');
+  if (persisted) {
+    await storageSet('session', JSON.stringify(session));
+  }
+  setAuthState({ session, hydrated: true });
+  return session;
+}
+
 /* --------------------------------------------------------------- service */
 
 export const authService: AuthService = {
@@ -326,5 +380,61 @@ export const authService: AuthService = {
 
   async resetPassword() {
     throw new AuthNotConfiguredError('Password recovery');
+  },
+
+  async updateProfile({ fullName }) {
+    const account = await requireCurrentAccount();
+    const name = (fullName ?? account.fullName).trim();
+    if (!name) throw new Error('Please enter your full name.');
+    if (name === account.fullName) return;
+    await applyAccountUpdate({ ...account, fullName: name });
+  },
+
+  async changePassword(currentPassword, newPassword) {
+    const account = await requireCurrentAccount();
+    if (!currentPassword) throw new Error('Please enter your current password.');
+    if (newPassword.length < 8) {
+      throw new Error('Your new password must be at least 8 characters long.');
+    }
+    if (newPassword === currentPassword) {
+      throw new Error('Choose a password different from your current one.');
+    }
+    const currentHash = await hashPassword(currentPassword, account.salt);
+    if (currentHash !== account.passwordHash) {
+      throw new Error('Your current password is incorrect. Please try again.');
+    }
+    const salt = Crypto.randomUUID();
+    await saveAccount({
+      ...account,
+      salt,
+      passwordHash: await hashPassword(newPassword, salt),
+    });
+  },
+
+  async updateEmail(newEmail, currentPassword) {
+    const account = await requireCurrentAccount();
+    const mail = newEmail.trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(mail)) {
+      throw new Error('Please enter a valid email address.');
+    }
+    if (mail === account.email.toLowerCase()) {
+      throw new Error('That is already your email address.');
+    }
+    if (!currentPassword) {
+      throw new Error('Please enter your password to confirm this change.');
+    }
+    const passwordHash = await hashPassword(currentPassword, account.salt);
+    if (passwordHash !== account.passwordHash) {
+      throw new Error('Your password is incorrect. Please try again.');
+    }
+    const accounts = await loadAccounts();
+    if (
+      accounts.some(
+        (other) => other.id !== account.id && other.email.toLowerCase() === mail
+      )
+    ) {
+      throw new Error('Another account already uses that email address.');
+    }
+    await applyAccountUpdate({ ...account, email: mail });
   },
 };

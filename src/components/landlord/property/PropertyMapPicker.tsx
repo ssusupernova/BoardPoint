@@ -11,10 +11,12 @@ type Props = {
   /** Called when the pin is dragged or "Use current location" resolves. */
   onChange: (point: GeoPoint) => void;
   error?: string;
+  /** Pin tint — defaults to the landlord primary (#BF7E4A). */
+  accentColor?: string;
 };
 
 /** Draggable map for pinning a property, with a use-current-location shortcut. */
-export function PropertyMapPicker({ point, onChange, error }: Props) {
+export function PropertyMapPicker({ point, onChange, error, accentColor = LANDLORD_THEME.primary }: Props) {
   const { loading, error: locationError, getLocation } = useCurrentLocation();
 
   const handleUseCurrentLocation = async () => {
@@ -24,7 +26,13 @@ export function PropertyMapPicker({ point, onChange, error }: Props) {
 
   return (
     <View style={styles.container}>
-      <DraggableMap point={point} onChange={onChange} />
+      <DraggableMap
+        point={point}
+        onChange={onChange}
+        accentColor={accentColor}
+        title="Property location"
+        description="Drag to set the exact property location"
+      />
 
       <View style={styles.footer}>
         <View style={styles.coords}>

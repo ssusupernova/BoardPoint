@@ -54,18 +54,24 @@ export function useSignUp(role: SignUpRole) {
         password,
         role,
       });
-      const nextRoute =
-        session.user.role === 'landlord'
-          ? routes.landlordAddProperty
-          : dashboardForRole(session.user.role === 'renter' ? 'renter' : undefined);
-      router.replace(nextRoute);
+      const firstName = session.user.fullName.split(' ')[0];
 
-      Alert.alert(
-        'Account created',
-        `Welcome to BoardPoint, ${session.user.fullName.split(' ')[0]}! Log in with your new account to continue.`
-      );
-      router.replace(routes.signIn);
-
+      if (session.user.role === 'landlord') {
+        // Landlords start with verification; Add Property comes after review.
+        // The session was already established by signUp, so go straight there.
+        router.replace(routes.landlordVerification);
+        Alert.alert(
+          'Account created',
+          `Welcome to BoardPoint, ${firstName}! Submit your details so our team can review your landlord account.`
+        );
+      } else {
+        router.replace(dashboardForRole(session.user.role === 'renter' ? 'renter' : undefined));
+        Alert.alert(
+          'Account created',
+          `Welcome to BoardPoint, ${firstName}! Log in with your new account to continue.`
+        );
+        router.replace(routes.signIn);
+      }
     } catch (err) {
       Alert.alert('Unable to create account', toErrorMessage(err));
     } finally {

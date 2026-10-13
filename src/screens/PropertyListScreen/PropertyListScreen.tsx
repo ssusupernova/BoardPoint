@@ -185,6 +185,14 @@ export default function PropertyListScreen() {
               <Text style={styles.brandSubtitle}>OWNED & MANAGED LISTINGS</Text>
             </View>
             <Pressable
+              onPress={() => router.push(routes.landlordPropertyMap)}
+              style={({ pressed }) => [st.headerMapButton, pressed && st.headerMapButtonPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Open property map"
+            >
+              <Ionicons name="map-outline" size={17} color={LANDLORD_THEME.badgeBlueText} />
+            </Pressable>
+            <Pressable
               onPress={() => router.push(routes.landlordAddProperty)}
               style={({ pressed }) => [st.headerAction, pressed && st.headerActionPressed]}
               accessibilityRole="button"

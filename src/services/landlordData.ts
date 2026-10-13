@@ -1259,7 +1259,7 @@ export function publishValidationErrors(property: {
   if (!property.city.trim()) errors.city = 'City or municipality is required.';
   if (!property.barangay.trim()) errors.barangay = 'Barangay is required.';
   if (!property.mapLocationSet)
-    errors.mapLocationSet = 'Pin the property location on the map.';
+    errors.mapLocationSet = 'Confirm the property location on the map before publishing.';
   if (property.photos.length === 0)
     errors.photos = 'Add at least one property photo.';
   if (!property.contactName.trim()) errors.contactName = 'Contact name is required.';

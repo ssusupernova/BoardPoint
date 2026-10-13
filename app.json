@@ -10,7 +10,7 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "BoardPoint uses your location to centre the map on your room search point."
+        "NSLocationWhenInUseUsageDescription": "BoardPoint uses your location only to drop the map pin you ask for — when searching rooms or confirming a property location. It is never shared with other users."
       }
     },
     "android": {
@@ -36,7 +36,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BoardPoint uses your photos only when you choose a picture for your profile or a property listing.",
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

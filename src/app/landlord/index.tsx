@@ -182,13 +182,19 @@ export default function LandlordDashboardScreen() {
         label: 'Record Payment',
         onPress: () => router.push(routes.landlordBills),
       },
-      {
-        key: 'expense',
-        icon: 'receipt-outline',
-        label: 'Add Shared Expense',
-        onPress: () => router.push(routes.landlordExpenses),
-      },
-    ];
+        {
+          key: 'expense',
+          icon: 'receipt-outline',
+          label: 'Add Shared Expense',
+          onPress: () => router.push(routes.landlordExpenses),
+        },
+        {
+          key: 'reports',
+          icon: 'bar-chart-outline',
+          label: 'Reports',
+          onPress: () => router.push(routes.landlordReports),
+        },
+      ];
 
   const openNotifications = () => {
     router.push(routes.landlordNotifications);

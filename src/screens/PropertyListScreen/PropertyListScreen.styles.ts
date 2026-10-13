@@ -23,6 +23,17 @@ export const propertyListStyles = StyleSheet.create({
     fontWeight: '700',
     color: LANDLORD_THEME.onPrimary,
   },
+  headerMapButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: LANDLORD_THEME.badgeBlueBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerMapButtonPressed: {
+    opacity: 0.75,
+  },
   statsRow: {
     flexDirection: 'row',
     gap: 8,

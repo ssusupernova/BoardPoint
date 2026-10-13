@@ -1,8 +1,9 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, radii } from '@/theme';
+import { MAP_TILE_SIZE } from '@/utils/webMercator';
 
 /** Pixel size of one map tile; also used by the web tile renderer. */
-export const TILE_SIZE = 256;
+export const TILE_SIZE = MAP_TILE_SIZE;
 
 export const styles = StyleSheet.create({
   container: {

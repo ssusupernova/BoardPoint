@@ -9,42 +9,36 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { MapOverlay } from '@/components/common/MapOverlay/MapOverlay';
 import { GeoPoint } from '@/services/geocode';
 import { colors } from '@/theme';
+import { latToTileY, lonToTileX, tileXToLon, tileYToLat, tilesInViewport } from '@/utils/webMercator';
 import { styles, TILE_SIZE } from './DraggableMap.styles';
 
 type Props = {
   point: GeoPoint;
   onChange: (point: GeoPoint) => void;
+  /** Pin tint; defaults to the BoardPoint primary. */
+  accentColor?: string;
+  title?: string;
+  description?: string;
 };
 
 const ZOOM = 15;
-const MAX_TILES = 2 ** ZOOM;
-const MAX_LATITUDE = 85.05112878;
-
-function lonToTileX(longitude: number): number {
-  return ((longitude + 180) / 360) * MAX_TILES;
-}
-
-function latToTileY(latitude: number): number {
-  const clamped = Math.max(-MAX_LATITUDE, Math.min(MAX_LATITUDE, latitude));
-  const rad = (clamped * Math.PI) / 180;
-  return ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * MAX_TILES;
-}
-
-function tileXToLon(tileX: number): number {
-  return (tileX / MAX_TILES) * 360 - 180;
-}
-
-function tileYToLat(tileY: number): number {
-  const n = Math.PI - (2 * Math.PI * tileY) / MAX_TILES;
-  return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-}
 
 type Size = { width: number; height: number };
 
-export function DraggableMap({ point, onChange }: Props) {
+export function DraggableMap({
+  point,
+  onChange,
+  accentColor = colors.primary,
+  title = 'Search point',
+  description = 'Drag to move your room search point',
+}: Props) {
   const [size, setSize] = useState<Size | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [failedKeys, setFailedKeys] = useState<string[]>([]);
+  const [attempt, setAttempt] = useState(0);
 
   const pointRef = useRef(point);
   const onChangeRef = useRef(onChange);
@@ -81,11 +75,11 @@ export function DraggableMap({ point, onChange }: Props) {
     const dx = pageX - startClientRef.current.x;
     const dy = pageY - startClientRef.current.y;
     const start = startPointRef.current;
-    const tileX = lonToTileX(start.longitude) + dx / TILE_SIZE;
-    const tileY = latToTileY(start.latitude) + dy / TILE_SIZE;
+    const tileX = lonToTileX(start.longitude, ZOOM) + dx / TILE_SIZE;
+    const tileY = latToTileY(start.latitude, ZOOM) + dy / TILE_SIZE;
     onChangeRef.current({
-      longitude: tileXToLon(tileX),
-      latitude: tileYToLat(tileY),
+      longitude: tileXToLon(tileX, ZOOM),
+      latitude: tileYToLat(tileY, ZOOM),
     });
   };
 
@@ -96,37 +90,32 @@ export function DraggableMap({ point, onChange }: Props) {
   };
 
   const centerPixel = {
-    x: lonToTileX(center.longitude) * TILE_SIZE,
-    y: latToTileY(center.latitude) * TILE_SIZE,
+    x: lonToTileX(center.longitude, ZOOM) * TILE_SIZE,
+    y: latToTileY(center.latitude, ZOOM) * TILE_SIZE,
   };
 
   const pinPixel = {
-    x: lonToTileX(longitude) * TILE_SIZE - (centerPixel.x - (size?.width ?? 0) / 2),
-    y: latToTileY(latitude) * TILE_SIZE - (centerPixel.y - (size?.height ?? 0) / 2),
+    x: lonToTileX(longitude, ZOOM) * TILE_SIZE - (centerPixel.x - (size?.width ?? 0) / 2),
+    y: latToTileY(latitude, ZOOM) * TILE_SIZE - (centerPixel.y - (size?.height ?? 0) / 2),
   };
 
-  const tiles: { key: string; x: number; y: number; left: number; top: number }[] = [];
-  if (size) {
-    const originX = centerPixel.x - size.width / 2;
-    const originY = centerPixel.y - size.height / 2;
-    const firstX = Math.floor(originX / TILE_SIZE);
-    const lastX = Math.floor((originX + size.width) / TILE_SIZE);
-    const firstY = Math.floor(originY / TILE_SIZE);
-    const lastY = Math.floor((originY + size.height) / TILE_SIZE);
+  const tiles = size
+    ? tilesInViewport(center, ZOOM, size).map((tile) => ({
+        key: `${ZOOM}-${tile.x}-${tile.y}-${attempt}`,
+        x: tile.x,
+        y: tile.y,
+        left: tile.left,
+        top: tile.top,
+      }))
+    : [];
 
-    for (let tileX = firstX; tileX <= lastX; tileX += 1) {
-      for (let tileY = firstY; tileY <= lastY; tileY += 1) {
-        if (tileX < 0 || tileX >= MAX_TILES || tileY < 0 || tileY >= MAX_TILES) continue;
-        tiles.push({
-          key: `${ZOOM}-${tileX}-${tileY}`,
-          x: tileX,
-          y: tileY,
-          left: tileX * TILE_SIZE - originX,
-          top: tileY * TILE_SIZE - originY,
-        });
-      }
-    }
-  }
+  const retry = () => {
+    setFailedKeys([]);
+    setLoaded(false);
+    setAttempt((value) => value + 1);
+  };
+
+  const tilesFailed = tiles.length > 0 && tiles.every((tile) => failedKeys.includes(tile.key));
 
   return (
     <View
@@ -135,14 +124,20 @@ export function DraggableMap({ point, onChange }: Props) {
         const { width, height } = event.nativeEvent.layout;
         setSize({ width, height });
       }}
-      accessibilityLabel="Map: drag the pin to set your search point"
+      accessibilityLabel={`Map: ${description}. Drag the pin to set your search point`}
     >
       {tiles.map((tile) => (
         <Image
           key={tile.key}
-          source={{ uri: `https://tile.openstreetmap.org/${ZOOM}/${tile.x}/${tile.y}.png` }}
+          source={{
+            uri: `https://tile.openstreetmap.org/${ZOOM}/${tile.x}/${tile.y}.png?v=${attempt}`,
+          }}
           style={[styles.tile, { left: tile.left, top: tile.top }]}
           resizeMode="cover"
+          onLoad={() => setLoaded(true)}
+          onError={() =>
+            setFailedKeys((prev) => (prev.includes(tile.key) ? prev : [...prev, tile.key]))
+          }
         />
       ))}
 
@@ -156,12 +151,22 @@ export function DraggableMap({ point, onChange }: Props) {
         onPointerCancel={endDrag}
         style={[styles.pin, { left: pinPixel.x - 18, top: pinPixel.y - 38 }]}
         accessibilityRole="image"
-        accessibilityLabel="Draggable search point pin"
+        accessibilityLabel={`${title} pin — drag to move`}
       >
-        <Ionicons name="location" size={36} color={colors.primary} />
+        <Ionicons name="location" size={36} color={accentColor} />
       </View>
 
       <Text style={styles.attribution}>© OpenStreetMap</Text>
+
+      {tilesFailed ? (
+        <MapOverlay
+          status="error"
+          onRetry={retry}
+          message="Map tiles are unavailable. Check your connection, or enter coordinates directly."
+        />
+      ) : !loaded ? (
+        <MapOverlay status="loading" onRetry={retry} />
+      ) : null}
     </View>
   );
 }
