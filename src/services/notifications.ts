@@ -2,7 +2,19 @@
  * BoardPoint notifications service.
  *
  * Notifications are seeded from mock data and their read state is persisted
- * on-device (SecureStore / localStorage). A tiny observable store lets the
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  setNotifications(notifications.map((item) => ({ ...item, read: true })));
+  await persistReadIds();
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  if (notifications.every((item) => item.id !== id || item.read)) return;
+  setNotifications(notifications.map((item) => (item.id === id ? { ...item, read: true } : item)));
+  await persistReadIds();
+}
+on-device (SecureStore / localStorage). A tiny observable store lets the
  * alerts screen and the bottom-nav badge stay in sync. Swap the persistence for
  * a backend call later; the public API stays the same.
  *
@@ -123,17 +135,6 @@ function loadPushed(raw: string | null): void {
   } catch {
     // Ignore malformed cache and keep anything pushed at runtime.
   }
-}
-
-export async function markAllNotificationsRead(): Promise<void> {
-  setNotifications(notifications.map((item) => ({ ...item, read: true })));
-  await persistReadIds();
-}
-
-export async function markNotificationRead(id: string): Promise<void> {
-  if (notifications.every((item) => item.id !== id || item.read)) return;
-  setNotifications(notifications.map((item) => (item.id === id ? { ...item, read: true } : item)));
-  await persistReadIds();
 }
 
 export interface PushNotificationInput {
