@@ -92,6 +92,7 @@ interface MirroredRequest {
   roomId: string;
   roomTitle: string;
   propertyName: string;
+  address: string;
   monthlyRent: number;
   status: RentalRequestStatus;
   submittedAt: string;
@@ -106,6 +107,7 @@ function toLocal(entry: MirroredRequest): RentalRequest {
     roomId: entry.roomId,
     roomTitle: entry.roomTitle,
     propertyName: entry.propertyName,
+    address: entry.address,
     monthlyRent: entry.monthlyRent,
     status: entry.status,
     submittedAt: entry.submittedAt,
@@ -338,7 +340,7 @@ function acceptanceTimestamp(date: Date): string {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   const period = hours >= 12 ? 'PM' : 'AM';
   const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${date.getDate()} ${MONTH_ABBRS[date.getMonth()]} · ${hour12}:${minutes} ${period}`;
+  return `${date.getDate()} ${MONTH_ABBRS[date.getMonth()]} ?? ${hour12}:${minutes} ${period}`;
 }
 
 function acceptanceNotification(request: RentalRequest, decidedAt: string): AppNotification {
@@ -350,6 +352,7 @@ function acceptanceNotification(request: RentalRequest, decidedAt: string): AppN
     title: 'Rental request accepted',
     description: `Your request for ${request.roomTitle} at ${request.propertyName} was accepted. Welcome home!`,
     statusLabel: 'Confirmed',
+    read: false,
   };
 }
 
@@ -417,6 +420,7 @@ export interface MirrorRentalRequestInput {
   roomId: string;
   roomTitle: string;
   propertyName: string;
+  address: string;
   monthlyRent: number;
   status: RentalRequestStatus;
   /** Date-only (yyyy-mm-dd) the request was submitted. */
@@ -439,6 +443,7 @@ export async function mirrorRentalRequest(input: MirrorRentalRequestInput): Prom
     roomId: input.roomId,
     roomTitle: input.roomTitle,
     propertyName: input.propertyName,
+    address: input.address,
     monthlyRent: input.monthlyRent,
     status: input.status,
     submittedAt: input.submittedAt,

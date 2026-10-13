@@ -22,15 +22,11 @@ import * as Crypto from 'expo-crypto';
 const READ_KEY = 'notifications.read';
 const ADDED_KEY = 'notifications.added';
 
-const seeded: AppNotification[] = renterNotifications.map((item) => ({ ...item }));
-let added: AppNotification[] = [];
-let notifications: AppNotification[] = [...added, ...seeded];
+const seeds: AppNotification[] = renterNotifications.map((item) => ({ ...item }));
 const STORAGE_KEY = 'notifications.read';
 const PUSHED_KEY = 'notifications.pushed';
 
 type PushedNotification = AppNotification & { createdAt: string };
-
-const seeds: AppNotification[] = renterNotifications.map((item) => ({ ...item }));
 
 let notifications: AppNotification[] = seeds;
 let pushed: PushedNotification[] = [];
@@ -68,12 +64,8 @@ export function useUnreadCount(): number {
 }
 
 async function persistReadIds(): Promise<void> {
-  const readIds = notifications.filter((item) => item.read).map((item) => item.id);
-  await storageSet(READ_KEY, JSON.stringify(readIds));
-}
-
-async function persistAdded(): Promise<void> {
-  await storageSet(ADDED_KEY, JSON.stringify(added));
+  const readIdsSet = notifications.filter((item) => item.read).map((item) => item.id);
+  await storageSet(READ_KEY, JSON.stringify(readIdsSet));
 }
 
 /**
@@ -83,38 +75,27 @@ async function persistAdded(): Promise<void> {
  */
 export async function addNotification(notification: AppNotification): Promise<void> {
   if (notifications.some((item) => item.id === notification.id)) return;
-  added = [{ ...notification }, ...added];
-  setNotifications([{ ...notification }, ...notifications]);
-  await persistAdded();
+  setNotifications([notification, ...notifications]);
+  await persistReadIds();
 }
 
 async function hydrate(): Promise<void> {
   if (hydrated) return;
   hydrated = true;
-  const [rawRead, rawAdded] = await Promise.all([
+  const [readRaw, pushedRaw] = await Promise.all([
     storageGet(READ_KEY),
-    storageGet(ADDED_KEY),
+    storageGet(PUSHED_KEY),
   ]);
-
-  try {
-    const parsedAdded = rawAdded ? (JSON.parse(rawAdded) as AppNotification[]) : [];
-    if (Array.isArray(parsedAdded)) {
-      added = parsedAdded;
-      notifications = [...added.map((item) => ({ ...item })), ...seeded.map((item) => ({ ...item }))];
+  if (readRaw) {
+    try {
+      const parsed = JSON.parse(readRaw) as string[];
+      if (Array.isArray(parsed)) readIds = new Set(parsed);
+    } catch {
+      // Ignore malformed cache and keep the seeded read state.
     }
-  } catch {
-    // Ignore malformed cache and keep the seeded feed.
   }
-
-  if (!rawRead) {
-    emit();
-    return;
-  }
-  try {
-    const parsed = JSON.parse(rawRead) as string[];
-  const ids = notifications.filter((item) => item.read).map((item) => item.id);
-  await storageSet(STORAGE_KEY, JSON.stringify(ids));
-}
+  loadPushed(pushedRaw);
+  setNotifications(rebuild());
 
 /** Rebuild the visible list from pushed items (newest first) plus the seeds. */
 function rebuild(): AppNotification[] {
@@ -143,27 +124,6 @@ function loadPushed(raw: string | null): void {
     // Ignore malformed cache and keep anything pushed at runtime.
   }
 }
-
-async function hydrate(): Promise<void> {
-  if (hydrated) return;
-  hydrated = true;
-  const [readRaw, pushedRaw] = await Promise.all([
-    storageGet(STORAGE_KEY),
-    storageGet(PUSHED_KEY),
-  ]);
-  if (readRaw) {
-    try {
-      const parsed = JSON.parse(readRaw) as string[];
-      if (Array.isArray(parsed)) readIds = new Set(parsed);
-    } catch {
-      // Ignore malformed cache and keep the seeded read state.
-    }
-  }
-  loadPushed(pushedRaw);
-  setNotifications(rebuild());
-}
-
-void hydrate();
 
 export async function markAllNotificationsRead(): Promise<void> {
   setNotifications(notifications.map((item) => ({ ...item, read: true })));
@@ -210,4 +170,5 @@ export function pushNotification(input: PushNotificationInput): void {
   pushed = [item, ...pushed];
   setNotifications([item, ...notifications]);
   void storageSet(PUSHED_KEY, JSON.stringify(pushed)).catch(() => undefined);
+}
 }

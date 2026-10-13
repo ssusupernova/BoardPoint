@@ -293,14 +293,10 @@ export interface RentalRequest {
 export const renterSeedRentalRequests: RentalRequest[] = [
   {
     id: 'req-seed-1',
-    roomId: 'room-studio-university',
-    roomTitle: 'Studio Unit near University',
-    propertyName: 'La Torre Apartelle',
-    address: 'Poblacion, La Torre St.',
-    monthlyRent: 3500,
     roomId: 'room-casa-cuarto',
     roomTitle: 'Casa Dela Cruz · Room 4',
     propertyName: 'Casa Dela Cruz',
+    address: 'Sta. Cruz, Dapitan City',
     monthlyRent: 2500,
     status: 'Confirmed',
     submittedAt: '2026-09-05',

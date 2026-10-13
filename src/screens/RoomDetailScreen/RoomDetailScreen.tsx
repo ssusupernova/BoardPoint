@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/common/PageHeader/PageHeader';
 import { ScreenContainer } from '@/components/common/ScreenContainer/ScreenContainer';
 import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
 import { PrimaryButton } from '@/components/ui/PrimaryButton/PrimaryButton';
+import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
 import { renterMockRooms } from '@/data/mock';
 import { routes } from '@/routes';
 import { useAuthSession } from '@/services/auth';

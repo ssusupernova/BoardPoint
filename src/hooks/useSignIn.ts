@@ -47,9 +47,8 @@ export function useSignIn() {
         const checklist = await loadChecklist(session.user.id);
         router.replace(checklist ? routes.renterDashboard : routes.preferences);
       } else {
-        router.replace(dashboardForRole(session.user.role));
+        router.replace(dashboardForRole(session.user.role as any));
       }
-      router.replace(homeForRole(session.user.role));
     } catch (err) {
       Alert.alert('Unable to sign in', toErrorMessage(err));
     } finally {
