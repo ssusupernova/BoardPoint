@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { authService } from '@/services/auth';
+import { loadChecklist } from '@/services/checklist';
 import { dashboardForRole, routes } from '@/routes';
 import { toErrorMessage } from '@/utils/errors';
 
@@ -32,7 +33,14 @@ export function useSignIn() {
         password,
         rememberMe,
       });
-      router.replace(dashboardForRole(session.user.role));
+      if (session.user.role === 'renter') {
+        // First-time renters complete the preferences checklist before landing
+        // on the dashboard; returning renters go straight home.
+        const checklist = await loadChecklist(session.user.id);
+        router.replace(checklist ? routes.renterDashboard : routes.preferences);
+      } else {
+        router.replace(dashboardForRole(session.user.role));
+      }
     } catch (err) {
       Alert.alert('Unable to sign in', toErrorMessage(err));
     } finally {

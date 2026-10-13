@@ -60,6 +60,7 @@ export default function RoomDetailScreen() {
         roomId: room.id,
         roomTitle: room.title,
         propertyName: room.propertyName,
+        address: room.area,
         monthlyRent: room.price,
       });
       router.push(routes.renterApplications);
@@ -155,7 +156,7 @@ export default function RoomDetailScreen() {
           <View style={styles.statusCard}>
             <StatusBadge text="Confirmed" variant="success" dot />
             <Text style={styles.statusText}>
-              You&apos;re a verified renter — this room is confirmed for you.
+              You&apos;re an active renter — this room is confirmed for you.
             </Text>
             <OutlineButton
               label="View my requests"

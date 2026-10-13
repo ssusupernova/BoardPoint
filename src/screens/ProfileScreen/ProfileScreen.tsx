@@ -8,11 +8,11 @@ import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
 import { DetailRow } from '@/components/renter/settings/DetailRow/DetailRow';
 import { SettingRow } from '@/components/renter/settings/SettingRow/SettingRow';
 import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
-import { renterProfile, renterTenancy } from '@/data/mock';
+import { renterProfile } from '@/data/mock';
 import { routes } from '@/routes';
 import { authService, useAuthSession } from '@/services/auth';
 import { useRenterContact } from '@/services/profile';
-import { isVerifiedRenter, useRentalRequestsState } from '@/services/rentalRequests';
+import { activeTenancy, isVerifiedRenter, useRentalRequestsState } from '@/services/rentalRequests';
 import { MONTH_ABBRS, parseISODate } from '@/utils/date';
 import { formatPeso } from '@/utils/currency';
 import { styles } from './ProfileScreen.styles';
@@ -47,6 +47,7 @@ export default function ProfileScreen() {
   const fullName = session.user.fullName || renterProfile.fullName;
   const email = session.user.email || renterProfile.email;
   const verified = isVerifiedRenter(requests);
+  const tenancy = activeTenancy(requests);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -69,7 +70,7 @@ export default function ProfileScreen() {
         {ready ? (
           <View style={styles.verifyBadge}>
             <StatusBadge
-              text={verified ? 'Verified renter' : 'Not yet verified'}
+              text={verified ? 'Active renter' : 'Not yet verified'}
               variant={verified ? 'success' : 'neutral'}
               dot
             />
@@ -92,38 +93,38 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {ready && verified ? (
+      {ready && verified && tenancy ? (
         <View style={styles.section}>
           <View style={styles.sectionHead}>
             <SectionHeader title="Your tenancy" />
-            <StatusBadge text={renterTenancy.status} variant="success" dot />
+            <StatusBadge text={tenancy.status} variant="success" dot />
           </View>
           <View style={styles.panel}>
-            <Text style={styles.tenancyName}>{renterTenancy.propertyName}</Text>
+            <Text style={styles.tenancyName}>{tenancy.propertyName}</Text>
             <Text style={styles.tenancyUnit}>
-              {renterTenancy.unitLabel} · {renterTenancy.address}
+              {tenancy.unitLabel} · {tenancy.address}
             </Text>
 
             <View style={styles.divider} />
 
             <DetailRow
               label="Lease period"
-              value={formatLeasePeriod(renterTenancy.leaseStartedAt, renterTenancy.leaseEndsAt)}
+              value={formatLeasePeriod(tenancy.leaseStartedAt, tenancy.leaseEndsAt)}
             />
-            <DetailRow label="Monthly rent" value={formatPeso(renterTenancy.monthlyRent)} />
+            <DetailRow label="Monthly rent" value={formatPeso(tenancy.monthlyRent)} />
             <DetailRow
               label="Security deposit"
-              value={renterTenancy.depositHeld != null ? formatPeso(renterTenancy.depositHeld) : '—'}
+              value={tenancy.depositHeld != null ? formatPeso(tenancy.depositHeld) : '—'}
             />
             <DetailRow
               label="Rent due"
-              value={renterTenancy.rentDueDay ? `${ordinal(renterTenancy.rentDueDay)} of each month` : '—'}
+              value={tenancy.rentDueDay ? `${ordinal(tenancy.rentDueDay)} of each month` : '—'}
             />
 
             <View style={styles.renewal}>
               <Text style={styles.renewalTitle}>Renewal awaiting confirmation</Text>
               <Text style={styles.renewalText}>
-                Your lease ends {formatLeasePeriod(renterTenancy.leaseStartedAt, renterTenancy.leaseEndsAt)}
+                Your lease ends {formatLeasePeriod(tenancy.leaseStartedAt, tenancy.leaseEndsAt)}
                 . Contact your landlord to discuss your next stay.
               </Text>
             </View>

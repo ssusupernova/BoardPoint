@@ -233,10 +233,10 @@ export default function PreferencesScreen() {
       <SaveConfirmationModal
         visible={savedVisible}
         onClose={() => setSavedVisible(false)}
-        actionLabel="See recommended rooms"
+        actionLabel="Go to my dashboard"
         onAction={() => {
           setSavedVisible(false);
-          router.push(routes.renterRecommended);
+          router.replace(routes.renterDashboard);
         }}
       />
     </View>

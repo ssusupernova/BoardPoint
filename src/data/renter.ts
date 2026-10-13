@@ -214,6 +214,8 @@ export interface RentalRequest {
   roomId: string;
   roomTitle: string;
   propertyName: string;
+  /** Room location, carried so the confirmed tenancy can show an address. */
+  address: string;
   monthlyRent: number;
   status: RentalRequestStatus;
   /** ISO yyyy-mm-dd the request was submitted. */
@@ -223,7 +225,7 @@ export interface RentalRequest {
 }
 
 /**
- * Demo seed so the registration status and Verified Renter badge are
+ * Demo seed so the registration status and Active Renter badge are
  * visualizable in this mock app (same convention as `renterTenancy`). The
  * confirmed record is replaced by real data once the backend exists.
  */
@@ -233,6 +235,7 @@ export const renterSeedRentalRequests: RentalRequest[] = [
     roomId: 'room-studio-university',
     roomTitle: 'Studio Unit near University',
     propertyName: 'La Torre Apartelle',
+    address: 'Poblacion, La Torre St.',
     monthlyRent: 3500,
     status: 'Confirmed',
     submittedAt: '2026-09-05',

@@ -50,6 +50,43 @@ export const styles = StyleSheet.create({
   panel: {
     ...cardSoft,
   },
+  loading: {
+    marginTop: spacing.xl,
+    alignItems: 'center',
+  },
+  empty: {
+    marginTop: spacing.lg,
+    ...cardSoft,
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radii.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.peach,
+  },
+  emptyTitle: {
+    marginTop: spacing.md,
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  emptyText: {
+    marginTop: 6,
+    maxWidth: 280,
+    textAlign: 'center',
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textSecondary,
+  },
+  emptyAction: {
+    marginTop: spacing.lg,
+    alignSelf: 'stretch',
+  },
   billRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

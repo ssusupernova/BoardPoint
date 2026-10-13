@@ -11,9 +11,12 @@ import { useSyncExternalStore } from 'react';
 import { renterNotifications, type AppNotification } from '@/data/mock';
 import { storageGet, storageSet } from '@/services/storage';
 
-const STORAGE_KEY = 'notifications.read';
+const READ_KEY = 'notifications.read';
+const ADDED_KEY = 'notifications.added';
 
-let notifications: AppNotification[] = renterNotifications.map((item) => ({ ...item }));
+const seeded: AppNotification[] = renterNotifications.map((item) => ({ ...item }));
+let added: AppNotification[] = [];
+let notifications: AppNotification[] = [...added, ...seeded];
 let hydrated = false;
 const listeners = new Set<() => void>();
 
@@ -48,16 +51,49 @@ export function useUnreadCount(): number {
 
 async function persistReadIds(): Promise<void> {
   const readIds = notifications.filter((item) => item.read).map((item) => item.id);
-  await storageSet(STORAGE_KEY, JSON.stringify(readIds));
+  await storageSet(READ_KEY, JSON.stringify(readIds));
+}
+
+async function persistAdded(): Promise<void> {
+  await storageSet(ADDED_KEY, JSON.stringify(added));
+}
+
+/**
+ * Adds a runtime notification (e.g. a rental request being accepted) to the top
+ * of the feed and persists it so it survives a reload. Read state is tracked
+ * separately, so a freshly added item starts unread.
+ */
+export async function addNotification(notification: AppNotification): Promise<void> {
+  if (notifications.some((item) => item.id === notification.id)) return;
+  added = [{ ...notification }, ...added];
+  setNotifications([{ ...notification }, ...notifications]);
+  await persistAdded();
 }
 
 async function hydrate(): Promise<void> {
   if (hydrated) return;
   hydrated = true;
-  const raw = await storageGet(STORAGE_KEY);
-  if (!raw) return;
+  const [rawRead, rawAdded] = await Promise.all([
+    storageGet(READ_KEY),
+    storageGet(ADDED_KEY),
+  ]);
+
   try {
-    const parsed = JSON.parse(raw) as string[];
+    const parsedAdded = rawAdded ? (JSON.parse(rawAdded) as AppNotification[]) : [];
+    if (Array.isArray(parsedAdded)) {
+      added = parsedAdded;
+      notifications = [...added.map((item) => ({ ...item })), ...seeded.map((item) => ({ ...item }))];
+    }
+  } catch {
+    // Ignore malformed cache and keep the seeded feed.
+  }
+
+  if (!rawRead) {
+    emit();
+    return;
+  }
+  try {
+    const parsed = JSON.parse(rawRead) as string[];
     if (!Array.isArray(parsed)) return;
     const readIds = new Set(parsed);
     setNotifications(
