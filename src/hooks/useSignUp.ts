@@ -1,9 +1,9 @@
+import { dashboardForRole, routes } from '@/routes';
+import { authService } from '@/services/auth';
+import { toErrorMessage } from '@/utils/errors';
+import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
-import { router } from 'expo-router';
-import { authService } from '@/services/auth';
-import { dashboardForRole, routes } from '@/routes';
-import { toErrorMessage } from '@/utils/errors';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -53,13 +53,19 @@ export function useSignUp(role: SignUpRole) {
         email: email.trim(),
         password,
         role,
-        establishSession: false,
       });
+      const nextRoute =
+        session.user.role === 'landlord'
+          ? routes.landlordAddProperty
+          : dashboardForRole(session.user.role === 'renter' ? 'renter' : undefined);
+      router.replace(nextRoute);
+
       Alert.alert(
         'Account created',
         `Welcome to BoardPoint, ${session.user.fullName.split(' ')[0]}! Log in with your new account to continue.`
       );
       router.replace(routes.signIn);
+
     } catch (err) {
       Alert.alert('Unable to create account', toErrorMessage(err));
     } finally {

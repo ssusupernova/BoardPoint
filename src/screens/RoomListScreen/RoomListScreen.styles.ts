@@ -1,0 +1,222 @@
+import { StyleSheet } from 'react-native';
+import { LANDLORD_THEME } from '@/styles/landlord/styles';
+
+export const roomListStyles = StyleSheet.create({
+  headerTextCol: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  headerAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: LANDLORD_THEME.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  headerActionPressed: {
+    opacity: 0.85,
+  },
+  headerActionText: {
+    color: LANDLORD_THEME.onPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  loadingBox: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: LANDLORD_THEME.textMuted,
+    fontWeight: '600',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: LANDLORD_THEME.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: LANDLORD_THEME.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: LANDLORD_THEME.textPrimary,
+    paddingVertical: 0,
+  },
+  chipsRow: {
+    gap: 8,
+    paddingBottom: 10,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: LANDLORD_THEME.primary,
+  },
+  chipInactive: {
+    backgroundColor: LANDLORD_THEME.surface,
+    borderWidth: 1,
+    borderColor: LANDLORD_THEME.border,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: LANDLORD_THEME.onPrimary,
+  },
+  chipTextInactive: {
+    color: LANDLORD_THEME.textMuted,
+  },
+  group: {
+    marginBottom: 18,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  groupHeaderCopy: {
+    flex: 1,
+  },
+  groupTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: LANDLORD_THEME.textPrimary,
+  },
+  groupSubtitle: {
+    fontSize: 12,
+    color: LANDLORD_THEME.textMuted,
+    marginTop: 1,
+  },
+  groupCount: {
+    minWidth: 28,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: LANDLORD_THEME.badgePeachBg,
+    alignItems: 'center',
+  },
+  groupCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: LANDLORD_THEME.primaryDark,
+  },
+  card: {
+    flexDirection: 'row',
+    backgroundColor: LANDLORD_THEME.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: LANDLORD_THEME.border,
+    padding: 12,
+    marginBottom: 10,
+    gap: 12,
+  },
+  cardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.995 }],
+  },
+  cardThumb: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    backgroundColor: LANDLORD_THEME.badgePeachBg,
+  },
+  cardThumbPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBody: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 3,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  cardTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: LANDLORD_THEME.textPrimary,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: LANDLORD_THEME.textMuted,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+    flexWrap: 'wrap',
+  },
+  cardRent: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: LANDLORD_THEME.primaryDark,
+  },
+  occupancyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: LANDLORD_THEME.badgeBlueBg,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  occupancyPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: LANDLORD_THEME.badgeBlueText,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    backgroundColor: LANDLORD_THEME.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: LANDLORD_THEME.border,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: LANDLORD_THEME.textPrimary,
+    marginTop: 4,
+  },
+  emptyBody: {
+    fontSize: 13,
+    color: LANDLORD_THEME.textMuted,
+    textAlign: 'center',
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: LANDLORD_THEME.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    marginTop: 10,
+  },
+  emptyButtonPressed: {
+    opacity: 0.85,
+  },
+  emptyButtonText: {
+    color: LANDLORD_THEME.onPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+});

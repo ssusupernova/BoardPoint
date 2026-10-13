@@ -10,3 +10,7 @@
 export * from './types';
 export * from './renter';
 export * from './landlord';
+
+// `RoomCategory` is exported by both `types` and `renter` (same union);
+// re-export one explicitly so the star exports stay unambiguous.
+export type { RoomCategory } from './renter';

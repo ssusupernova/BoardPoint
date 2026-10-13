@@ -46,6 +46,34 @@ export function formatDisplayDate(iso: string | null): string {
   return `${date.getDate()} ${MONTH_ABBRS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+/** "15 Oct" for compact due-date labels; falls back to the raw string. */
+export function formatShortDate(iso: string | null): string {
+  const date = parseISODate(iso);
+  if (!date) return iso ?? '';
+  return `${date.getDate()} ${MONTH_ABBRS[date.getMonth()]}`;
+}
+
+/**
+ * Human-friendly age of an ISO datetime: "Just now", "42m ago", "3h ago",
+ * "Yesterday", "4d ago", or a full display date beyond a week.
+ */
+export function formatRelativeTime(iso: string): string {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return iso;
+  const elapsed = Date.now() - then.getTime();
+  if (elapsed < 0) return formatDisplayDate(toISODate(then));
+
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  return formatDisplayDate(toISODate(then));
+}
+
 /**
  * Weeks (Sunday-first) of day numbers for a month; leading/trailing cells are
  * null so the calendar grid stays rectangular.

@@ -27,12 +27,16 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-splash-screen"
+    ]
   }
 }

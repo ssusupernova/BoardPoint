@@ -5,6 +5,14 @@ import { authService } from '@/services/auth';
 import { loadChecklist } from '@/services/checklist';
 import { dashboardForRole, routes } from '@/routes';
 import { toErrorMessage } from '@/utils/errors';
+import type { UserRole } from '@/services/auth';
+
+/** Where a signed-in role lands after auth. */
+export function homeForRole(role: UserRole) {
+  if (role === 'super_admin') return routes.admin;
+  if (role === 'user') return routes.home;
+  return dashboardForRole(role);
+}
 
 /** Sign-in form state and side effects, kept out of the LoginScreen view. */
 export function useSignIn() {
@@ -41,6 +49,7 @@ export function useSignIn() {
       } else {
         router.replace(dashboardForRole(session.user.role));
       }
+      router.replace(homeForRole(session.user.role));
     } catch (err) {
       Alert.alert('Unable to sign in', toErrorMessage(err));
     } finally {
