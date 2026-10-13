@@ -9,7 +9,6 @@ import {
 import { useAuthSession } from '@/services/auth';
 import {
   decideRentalRequest,
-  markAllNotificationsRead,
   toPropertyViews,
   toRequestViews,
   useLandlordData,
@@ -187,36 +186,12 @@ export default function LandlordDashboardScreen() {
         key: 'expense',
         icon: 'receipt-outline',
         label: 'Add Shared Expense',
-        onPress: () =>
-          Alert.alert(
-            'Add Shared Expense',
-            'Shared expense entries are not available yet. Bill records for water, electricity, and repairs will live alongside rental bills.'
-          ),
+        onPress: () => router.push(routes.landlordExpenses),
       },
     ];
 
   const openNotifications = () => {
-    const unreadItems = data.notifications.filter((item) => !item.read);
-    if (unreadItems.length === 0) {
-      Alert.alert('Notifications', 'You are all caught up. No new alerts.');
-      return;
-    }
-    Alert.alert(
-      'Notifications',
-      unreadItems
-        .slice(0, 4)
-        .map((item) => `• ${item.title}`)
-        .join('\n'),
-      [
-        { text: 'Close', style: 'cancel' },
-        {
-          text: 'Mark all as read',
-          onPress: () => {
-            void markAllNotificationsRead();
-          },
-        },
-      ]
-    );
+    router.push(routes.landlordNotifications);
   };
 
   const decide = (requestId: string, decision: 'approve' | 'decline') => {

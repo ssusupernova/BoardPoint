@@ -1,4 +1,5 @@
 import type { Href } from 'expo-router';
+import type { LandlordNotificationLink } from '@/services/landlordNotifications';
 
 /**
  * Build a typed href from a plain path.
@@ -41,6 +42,9 @@ export const routes = {
   landlordBills: href('/landlord/bills'),
   landlordPayments: href('/landlord/payments'),
   landlordPaymentNew: href('/landlord/payment-new'),
+  landlordExpenses: href('/landlord/expenses'),
+  landlordExpenseNew: href('/landlord/expense-new'),
+  landlordStatements: href('/landlord/statements'),
   landlordProperties: href('/landlord/properties'),
   landlordRooms: href('/landlord/rooms'),
   landlordRoomNew: href('/landlord/room-new'),
@@ -53,6 +57,8 @@ export const routes = {
   landlordProfile: href('/landlord/profile'),
   landlordAddProperty: href('/landlord/property-new'),
   landlordListSpace: href('/landlord/list-space'),
+  landlordNotifications: href('/landlord/notifications'),
+  landlordNotificationSettings: href('/landlord/notification-settings'),
   home: href('/home'),
   admin: href('/admin'),
   adminVerification: href('/admin/verification'),
@@ -113,6 +119,37 @@ export function landlordTenantDetails(tenantId: string): Href {
   return href(`/landlord/leases?tenantId=${encodeURIComponent(tenantId)}`);
 }
 
+/** Shared-expense dashboard, optionally filtered to one property. */
+export function landlordExpensesFor(propertyId?: string): Href {
+  return propertyId
+    ? href(`/landlord/expenses?propertyId=${encodeURIComponent(propertyId)}`)
+    : routes.landlordExpenses;
+}
+
+/** Add/edit shared-expense form; pass an expenseId to edit an existing record. */
+export function landlordExpenseForm(expenseId?: string): Href {
+  return expenseId
+    ? href(`/landlord/expense-new?expenseId=${encodeURIComponent(expenseId)}`)
+    : routes.landlordExpenseNew;
+}
+
+/** Shared-expense details — stored allocation breakdown for one expense. */
+export function landlordExpenseDetails(expenseId: string): Href {
+  return href(`/landlord/expense-details?expenseId=${encodeURIComponent(expenseId)}`);
+}
+
+/** Billing-statements list, optionally filtered to one property. */
+export function landlordStatementsFor(propertyId?: string): Href {
+  return propertyId
+    ? href(`/landlord/statements?propertyId=${encodeURIComponent(propertyId)}`)
+    : routes.landlordStatements;
+}
+
+/** One tenant's itemised statement (draft or finalized). */
+export function landlordStatement(statementId: string): Href {
+  return href(`/landlord/statement?statementId=${encodeURIComponent(statementId)}`);
+}
+
 /** Room management list, optionally filtered to one property. */
 export function landlordRoomList(propertyId?: string): Href {
   return propertyId
@@ -152,4 +189,34 @@ export function landlordTenantForm(tenantId?: string): Href {
 /** Tenant profile — payments, messages, and tenancy history for one person. */
 export function landlordTenantProfile(tenantId: string): Href {
   return href(`/landlord/tenant-details?tenantId=${encodeURIComponent(tenantId)}`);
+}
+
+/** Resolve a notification deep link to its destination screen. */
+export function landlordNotificationLink(link?: LandlordNotificationLink): Href {
+  switch (link?.kind) {
+    case 'property':
+      return landlordPropertyDetails(link.propertyId);
+    case 'room':
+      return landlordRoomDetails(link.roomId);
+    case 'tenant':
+      return landlordTenantProfile(link.tenantId);
+    case 'bill':
+      return landlordPaymentDetails(link.billId);
+    case 'statement':
+      return landlordStatement(link.statementId);
+    case 'expense':
+      return landlordExpenseDetails(link.expenseId);
+    case 'bills':
+      return routes.landlordBills;
+    case 'leases':
+      return routes.landlordLeases;
+    case 'payments':
+      return routes.landlordPayments;
+    case 'expenses':
+      return routes.landlordExpenses;
+    case 'statements':
+      return routes.landlordStatements;
+    default:
+      return routes.landlordNotifications;
+  }
 }

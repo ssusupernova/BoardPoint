@@ -197,7 +197,7 @@ export default function LandlordProfileScreen() {
             <View style={profileStyles.menuDivider} />
 
             <Pressable
-              onPress={() => Alert.alert('Notification Settings', 'Tenant rent reminders and maintenance alerts are active.')}
+              onPress={() => router.push(routes.landlordNotificationSettings)}
               style={({ pressed }) => [
                 profileStyles.menuItem,
                 pressed && profileStyles.menuItemPressed,
@@ -211,7 +211,7 @@ export default function LandlordProfileScreen() {
               <View style={profileStyles.menuTextContainer}>
                 <Text style={profileStyles.menuTitle}>Notification Alerts</Text>
                 <Text style={profileStyles.menuSubtitle}>
-                  Automated SMS & push reminders for overdue rent
+                  Choose which in-app alerts you receive
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={LANDLORD_THEME.textMuted} />

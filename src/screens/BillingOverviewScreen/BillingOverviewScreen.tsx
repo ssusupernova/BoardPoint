@@ -263,6 +263,14 @@ export default function BillingOverviewScreen() {
               <Ionicons name="list-outline" size={18} color={LANDLORD_THEME.primaryDark} />
               <Text style={form.secondaryButtonText}>Payment records</Text>
             </Pressable>
+            <Pressable
+              onPress={() => router.push(routes.landlordExpenses)}
+              style={({ pressed }) => [form.secondaryButton, pressed && form.secondaryButtonPressed]}
+              accessibilityRole="button"
+            >
+              <Ionicons name="receipt-outline" size={18} color={LANDLORD_THEME.primaryDark} />
+              <Text style={form.secondaryButtonText}>Shared expenses &amp; tenant bills</Text>
+            </Pressable>
           </View>
 
           <Text style={pay.disclaimer}>

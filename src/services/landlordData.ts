@@ -19,11 +19,17 @@
 
 import { renterMockRooms } from '@/data/renter';
 import { pushNotification } from '@/services/notifications';
+import {
+  inferNotificationKind,
+  isNotificationKindEnabled,
+  type LandlordNotificationKind,
+  type LandlordNotificationLink,
+} from '@/services/landlordNotifications';
 import { mirrorRentalRequest } from '@/services/rentalRequests';
 import { storageGet, storageSet } from '@/services/storage';
 import { DEFAULT_MAP_POINT } from '@/services/geocode';
 import { formatPeso } from '@/utils/currency';
-import { formatDisplayDate, formatShortDate, parseISODate, toISODate } from '@/utils/date';
+import { formatDisplayDate, formatShortDate, parseISODate, toISODate, MONTH_ABBRS } from '@/utils/date';
 import * as Crypto from 'expo-crypto';
 import { useMemo, useSyncExternalStore } from 'react';
 
@@ -294,6 +300,140 @@ export interface PaymentEntry {
  */
 export type PaymentStatus = 'Unpaid' | 'Partially Paid' | 'Paid' | 'Overdue';
 
+/* ------------------------------------------------- shared expenses & billing */
+
+/** Utility / upkeep costs split across a property's tenants. */
+export type ExpenseCategory =
+  | 'Electricity'
+  | 'Water'
+  | 'Internet'
+  | 'Cleaning'
+  | 'Maintenance'
+  | 'Other';
+
+export const EXPENSE_CATEGORIES: readonly ExpenseCategory[] = [
+  'Electricity',
+  'Water',
+  'Internet',
+  'Cleaning',
+  'Maintenance',
+  'Other',
+];
+
+/**
+ * How a shared expense is divided:
+ * - `equal` — every eligible tenant pays the same (default).
+ * - `byRoom` — each room pays an equal share; rooms with several included
+ *   tenants split that room's share.
+ * - `byOccupancy` — shares are weighted by each room's capacity.
+ * - `custom` — the landlord types the amount for each tenant (must total the
+ *   expense exactly).
+ */
+export type AllocationMethod = 'equal' | 'byRoom' | 'byOccupancy' | 'custom';
+
+export const ALLOCATION_METHODS: readonly AllocationMethod[] = [
+  'equal',
+  'byRoom',
+  'byOccupancy',
+  'custom',
+];
+
+export const ALLOCATION_METHOD_LABELS: Record<AllocationMethod, string> = {
+  equal: 'Equal split',
+  byRoom: 'By room',
+  byOccupancy: 'By occupancy',
+  custom: 'Custom amounts',
+};
+
+/** One tenant's share of a shared expense, in PHP. Shares always sum to the total. */
+export interface ExpenseAllocation {
+  tenantId: string;
+  amount: number;
+}
+
+/** A confirmed shared expense for one property and billing period. */
+export interface SharedExpense {
+  id: string;
+  propertyId: string;
+  category: ExpenseCategory;
+  description?: string;
+  /** Billing period start (yyyy-mm-dd). */
+  periodStart: string;
+  /** Billing period end (yyyy-mm-dd). */
+  periodEnd: string;
+  /** Total cost of the expense, in PHP. */
+  amount: number;
+  /** Date the utility bill was issued (yyyy-mm-dd). */
+  billDate: string;
+  /** Date allocated shares are due from tenants (yyyy-mm-dd). */
+  dueDate: string;
+  /** Attached photo of the utility bill, when the landlord took one. */
+  attachmentName?: string;
+  attachmentUri?: string;
+  allocationMethod: AllocationMethod;
+  /** Eligible tenants at the time the expense was saved. */
+  tenantIds: string[];
+  /** Frozen per-tenant shares (recomputed when the expense is edited). */
+  allocations: ExpenseAllocation[];
+  /** ISO datetime the expense was recorded. */
+  createdAt: string;
+}
+
+export type StatementStatus = 'draft' | 'finalized';
+
+/** One itemised line on a tenant statement. `billId` links it to a RentBill once billed. */
+export interface StatementLine {
+  id: string;
+  kind: 'rent' | ExpenseCategory;
+  label: string;
+  amount: number;
+  /** Source shared expense for allocated lines. */
+  expenseId?: string;
+  /** RentBill backing this line (set when billed or linked at generation). */
+  billId?: string;
+}
+
+/** A controlled correction applied to a FINALIZED statement (never silent). */
+export interface StatementCorrection {
+  id: string;
+  label: string;
+  /** Signed PHP amount; negative values credit the tenant. */
+  amount: number;
+  reason: string;
+  /** ISO datetime the correction was recorded. */
+  at: string;
+}
+
+/**
+ * An itemised bill for one tenant over one billing period. Drafts are
+ * estimates; finalizing freezes the calculation and posts the charges as
+ * RentBills. Later input changes never touch a finalized statement — they go
+ * through `StatementCorrection` records instead.
+ */
+export interface TenantStatement {
+  id: string;
+  propertyId: string;
+  tenantId: string;
+  roomId: string;
+  /** Billing period start (yyyy-mm-dd). */
+  periodStart: string;
+  /** Billing period end (yyyy-mm-dd). */
+  periodEnd: string;
+  /** Date the statement's charges are due (yyyy-mm-dd). */
+  dueDate: string;
+  status: StatementStatus;
+  lines: StatementLine[];
+  /** Unpaid balance carried into this statement (snapshot at generation). */
+  previousBalance: number;
+  /** Bills that made up the carried balance (for payments-applied tracking). */
+  previousBalanceBillIds: string[];
+  corrections: StatementCorrection[];
+  /** ISO datetime the draft was generated. */
+  createdAt: string;
+  /** ISO datetime the statement was finalized — locked from silent changes. */
+  finalizedAt?: string;
+}
+
 export interface ActivityRecord {
   id: string;
   kind: ActivityKind;
@@ -310,6 +450,10 @@ export interface NotificationRecord {
   detail: string;
   at: string;
   read: boolean;
+  /** Category for grouping, icons, and the preferences screen. */
+  kind?: LandlordNotificationKind;
+  /** Deep link to the related property, tenant, bill, or statement. */
+  link?: LandlordNotificationLink;
 }
 
 /**
@@ -362,6 +506,8 @@ export interface LandlordData {
   notifications: NotificationRecord[];
   requests: RentalRequest[];
   registrations: Registration[];
+  sharedExpenses: SharedExpense[];
+  statements: TenantStatement[];
 }
 
 type SeedRoom = Partial<LandlordRoom> & { id: string };
@@ -520,13 +666,75 @@ function seedData(): SeedData {
       { id: 'act-6', kind: 'tenant', title: 'Tenant added', detail: 'Francis Santos moved into North Haven Boarding House · Room 5', at: daysAgoAt(4, 8, 45) },
     ],
     notifications: [
-      { id: 'noti-1', title: `Rent due ${formatShortDate(dueThisCycle)}`, detail: `3 tenants have rent due on ${formatDisplayDate(dueThisCycle)}.`, at: daysAgoAt(1, 8, 0), read: false },
-      { id: 'noti-2', title: 'New inquiry for Room 4', detail: 'Casa Dela Cruz — a renter asked about availability.', at: daysAgoAt(1, 9, 5), read: false },
-      { id: 'noti-3', title: `Lease renewal due ${formatDisplayDate(renewalDue)}`, detail: 'Juan Dela Cruz · Casa Dela Cruz · Room 1.', at: daysAgoAt(2, 18, 30), read: false },
-      { id: 'noti-4', title: 'Payment received', detail: '₱2,500 from Carlo Mendoza was recorded.', at: daysAgoAt(1, 16, 41), read: true },
+      { id: 'noti-1', kind: 'rent', link: { kind: 'bills' }, title: `Rent due ${formatShortDate(dueThisCycle)}`, detail: `3 tenants have rent due on ${formatDisplayDate(dueThisCycle)}.`, at: daysAgoAt(1, 8, 0), read: false },
+      { id: 'noti-2', kind: 'inquiry', link: { kind: 'property', propertyId: 'prop-1' }, title: 'New inquiry for Room 4', detail: 'Casa Dela Cruz — a renter asked about availability.', at: daysAgoAt(1, 9, 5), read: false },
+      { id: 'noti-3', kind: 'request', link: { kind: 'tenant', tenantId: 'ten-1' }, title: `Lease renewal due ${formatDisplayDate(renewalDue)}`, detail: 'Juan Dela Cruz · Casa Dela Cruz · Room 1.', at: daysAgoAt(2, 18, 30), read: false },
+      { id: 'noti-4', kind: 'payment', link: { kind: 'payments' }, title: 'Payment received', detail: '₱2,500 from Carlo Mendoza was recorded.', at: daysAgoAt(1, 16, 41), read: true },
     ],
     requests: [],
     registrations: [],
+    sharedExpenses: [
+      {
+        id: 'exp-seed-1',
+        propertyId: 'prop-2',
+        category: 'Electricity',
+        description: 'Meralco statement for the common areas and corridor lights.',
+        periodStart: toISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+        periodEnd: toISODate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)),
+        amount: 3000,
+        billDate: daysAgo(6),
+        dueDate: daysFromNow(5),
+        allocationMethod: 'equal',
+        tenantIds: ['ten-4', 'ten-5', 'ten-6', 'ten-7'],
+        allocations: [
+          { tenantId: 'ten-4', amount: 750 },
+          { tenantId: 'ten-5', amount: 750 },
+          { tenantId: 'ten-6', amount: 750 },
+          { tenantId: 'ten-7', amount: 750 },
+        ],
+        createdAt: daysAgoAt(6, 9, 15),
+      },
+      {
+        id: 'exp-seed-2',
+        propertyId: 'prop-2',
+        category: 'Water',
+        description: 'Shared water bill for October.',
+        periodStart: toISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+        periodEnd: toISODate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)),
+        amount: 1200,
+        billDate: daysAgo(6),
+        dueDate: daysFromNow(5),
+        allocationMethod: 'equal',
+        tenantIds: ['ten-4', 'ten-5', 'ten-6', 'ten-7'],
+        allocations: [
+          { tenantId: 'ten-4', amount: 300 },
+          { tenantId: 'ten-5', amount: 300 },
+          { tenantId: 'ten-6', amount: 300 },
+          { tenantId: 'ten-7', amount: 300 },
+        ],
+        createdAt: daysAgoAt(6, 9, 20),
+      },
+      {
+        id: 'exp-seed-3',
+        propertyId: 'prop-1',
+        category: 'Internet',
+        description: 'Fiber plan split across the three occupied rooms.',
+        periodStart: toISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+        periodEnd: toISODate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)),
+        amount: 800,
+        billDate: daysAgo(4),
+        dueDate: daysFromNow(5),
+        allocationMethod: 'equal',
+        tenantIds: ['ten-1', 'ten-2', 'ten-3'],
+        allocations: [
+          { tenantId: 'ten-1', amount: 266.7 },
+          { tenantId: 'ten-2', amount: 266.7 },
+          { tenantId: 'ten-3', amount: 266.6 },
+        ],
+        createdAt: daysAgoAt(4, 10, 5),
+      },
+    ],
+    statements: [],
   };
 }
 
@@ -631,9 +839,17 @@ function normalizeData(
     bills: Array.isArray(parsed.bills) ? parsed.bills : [],
     payments: Array.isArray(parsed.payments) ? parsed.payments : [],
     activities: Array.isArray(parsed.activities) ? parsed.activities : [],
-    notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
+    notifications: Array.isArray(parsed.notifications)
+      ? (parsed.notifications as NotificationRecord[]).map((item) =>
+        item && typeof item.title === 'string'
+          ? { ...item, kind: item.kind ?? inferNotificationKind(item.title, item.detail ?? '') }
+          : item
+      )
+      : [],
     requests: Array.isArray(parsed.requests) ? parsed.requests : [],
     registrations: Array.isArray(parsed.registrations) ? parsed.registrations : [],
+    sharedExpenses: Array.isArray(parsed.sharedExpenses) ? parsed.sharedExpenses : [],
+    statements: Array.isArray(parsed.statements) ? parsed.statements : [],
   };
 }
 
@@ -821,6 +1037,18 @@ export async function recordPayment(input: RecordPaymentInput): Promise<PaymentE
         },
         ...state.activities,
       ],
+      notifications: notifyLandlord(
+        {
+          kind: 'payment',
+          title: `Payment received · ${formatPeso(amount)}`,
+          detail: [tenant?.fullName ?? 'Tenant', property?.name, room?.label, input.method]
+            .filter(Boolean)
+            .join(' · '),
+          link: { kind: 'bill', billId: bill.id },
+        },
+        state.notifications,
+        entry.createdAt
+      ),
     });
     await persist();
     return entry;
@@ -881,6 +1109,17 @@ export async function reversePayment(paymentId: string): Promise<void> {
         },
         ...state.activities,
       ],
+      notifications: notifyLandlord(
+        {
+          kind: 'payment',
+          title: `Payment reversed · ${formatPeso(entry.amount)}`,
+          detail: [tenant?.fullName ?? 'Tenant', property?.name, room?.label]
+            .filter(Boolean)
+            .join(' · '),
+          link: { kind: 'bill', billId: entry.billId },
+        },
+        state.notifications
+      ),
     });
     await persist();
   } finally {
@@ -909,6 +1148,56 @@ export async function markAllNotificationsRead(): Promise<void> {
     notifications: state.notifications.map((item) => ({ ...item, read: true })),
   });
   await persist();
+}
+
+/** Mark a single alert as read from the Notifications Center. */
+export async function markNotificationRead(id: string): Promise<void> {
+  const target = state.notifications.find((item) => item.id === id);
+  if (!target || target.read) return;
+  setState({
+    ...state,
+    notifications: state.notifications.map((item) =>
+      item.id === id ? { ...item, read: true } : item
+    ),
+  });
+  await persist();
+}
+
+export interface LandlordNoticeInput {
+  kind: LandlordNotificationKind;
+  title: string;
+  detail: string;
+  link?: LandlordNotificationLink;
+}
+
+/**
+ * Prepend an alert to a notifications list inside a `setState` call. Gated by
+ * the landlord's per-category preferences and de-duplicated (same kind, title
+ * and detail already present) so repeated events never spam the Center.
+ * Notifications are in-app only — nothing is pushed to a lock screen.
+ */
+export function notifyLandlord(
+  input: LandlordNoticeInput,
+  notifications: NotificationRecord[],
+  at: string = new Date().toISOString()
+): NotificationRecord[] {
+  if (!isNotificationKindEnabled(input.kind)) return notifications;
+  const duplicate = notifications.some(
+    (item) => item.kind === input.kind && item.title === input.title && item.detail === input.detail
+  );
+  if (duplicate) return notifications;
+  return [
+    {
+      id: Crypto.randomUUID(),
+      kind: input.kind,
+      link: input.link,
+      title: input.title,
+      detail: input.detail,
+      at,
+      read: false,
+    },
+    ...notifications,
+  ];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1083,6 +1372,15 @@ export async function setListingStatus(
     properties: state.properties.map((item) =>
       item.id === propertyId ? { ...item, listingStatus: status } : item
     ),
+    notifications: notifyLandlord(
+      {
+        kind: 'listing',
+        title: `Listing ${status.toLowerCase()}`,
+        detail: property.name,
+        link: { kind: 'property', propertyId },
+      },
+      state.notifications
+    ),
   });
   await persist();
 }
@@ -1242,6 +1540,7 @@ export async function updateRoom(
       'This room is fully occupied by active tenants. Resolve the tenancy before marking it Available.'
     );
   }
+  const availabilityChanged = availability !== roomAvailability(room);
 
   setState({
     ...state,
@@ -1267,6 +1566,17 @@ export async function updateRoom(
         }
         : item
     ),
+    notifications: availabilityChanged
+      ? notifyLandlord(
+        {
+          kind: 'availability',
+          title: `Room availability · ${room.label}`,
+          detail: [property.name, availability].join(' · '),
+          link: { kind: 'room', roomId },
+        },
+        state.notifications
+      )
+      : state.notifications,
   });
   await persist();
 }
@@ -1459,16 +1769,15 @@ export async function createInquiry(
       ),
       ...state.activities,
     ],
-    notifications: [
+    notifications: notifyLandlord(
       {
-        id: Crypto.randomUUID(),
+        kind: 'inquiry',
         title: `New inquiry from ${tenant.fullName}`,
         detail: [property.name, room?.label].filter(Boolean).join(' · '),
-        at: new Date().toISOString(),
-        read: false,
+        link: { kind: 'tenant', tenantId: tenant.id },
       },
-      ...state.notifications,
-    ],
+      state.notifications
+    ),
   });
   await persist();
   return tenant.id;
@@ -1531,6 +1840,15 @@ export async function approveTenancy(
       ),
       ...state.activities,
     ],
+    notifications: notifyLandlord(
+      {
+        kind: 'availability',
+        title: `Room reserved · ${room.label}`,
+        detail: [updated.fullName, property.name].filter(Boolean).join(' · '),
+        link: { kind: 'room', roomId: room.id },
+      },
+      state.notifications
+    ),
   });
   await persist();
 }
@@ -2029,20 +2347,22 @@ export async function submitRentalRequest(input: {
     detail: `${input.renterName} · ${property.name} · ${room.label} · ${formatPeso(room.rent)}/month`,
     at: now,
   };
-  const notification: NotificationRecord = {
-    id: Crypto.randomUUID(),
-    title: 'New rental request',
-    detail: `${input.renterName} requested ${property.name} · ${room.label}.`,
-    at: now,
-    read: false,
-  };
 
   setState({
     ...state,
     requests: [request, ...state.requests],
     registrations: [registration, ...state.registrations],
     activities: [activity, ...state.activities],
-    notifications: [notification, ...state.notifications],
+    notifications: notifyLandlord(
+      {
+        kind: 'inquiry',
+        title: 'New rental request',
+        detail: `${input.renterName} requested ${property.name} · ${room.label}.`,
+        link: { kind: 'property', propertyId: property.id },
+      },
+      state.notifications,
+      now
+    ),
   });
   await persist();
   void mirrorRentalRequest({
@@ -2141,13 +2461,6 @@ export async function decideRentalRequest(
     detail: `${request.renterName} moved into ${property.name} · ${room.label}`,
     at: now,
   };
-  const notification: NotificationRecord = {
-    id: Crypto.randomUUID(),
-    title: 'Registration confirmed',
-    detail: `${request.renterName} · ${property.name} · ${room.label}.`,
-    at: now,
-    read: false,
-  };
 
   setState({
     ...state,
@@ -2184,7 +2497,16 @@ export async function decideRentalRequest(
       },
     ],
     activities: [activity, ...state.activities],
-    notifications: [notification, ...state.notifications],
+    notifications: notifyLandlord(
+      {
+        kind: 'request',
+        title: 'Registration confirmed',
+        detail: `${request.renterName} · ${property.name} · ${room.label}.`,
+        link: { kind: 'tenant', tenantId },
+      },
+      state.notifications,
+      now
+    ),
   });
   await persist();
   void mirrorRentalRequest({
@@ -2813,4 +3135,975 @@ export function summarize(data: LandlordData): LandlordSummary {
 export function useLandlordSummary(): LandlordSummary {
   const data = useLandlordData();
   return useMemo(() => summarize(data), [data]);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Shared expenses, allocation & tenant billing statements                    */
+/* -------------------------------------------------------------------------- */
+
+export class BillingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BillingError';
+  }
+}
+
+function ownedPropertyOrThrow(propertyId: string, landlordId?: string): LandlordProperty {
+  const property = state.properties.find((item) => item.id === propertyId);
+  if (!property) throw new BillingError('That property no longer exists.');
+  assertAuthorized(property, landlordId);
+  return property;
+}
+
+/** Active tenants with an assigned room — the usual expense/billing audience. */
+export function eligibleTenantsOf(data: LandlordData, propertyId: string): LandlordTenant[] {
+  return data.tenants.filter(
+    (tenant) =>
+      tenant.propertyId === propertyId && tenant.status === 'Active' && tenant.roomId
+  );
+}
+
+/** "1–31 Oct 2026" for same-month periods, "15 Sep – 14 Oct 2026" otherwise. */
+export function formatPeriodLabel(start: string, end: string): string {
+  const from = parseISODate(start);
+  const to = parseISODate(end);
+  if (!from || !to) return `${start} – ${end}`;
+  if (from.getFullYear() === to.getFullYear() && from.getMonth() === to.getMonth()) {
+    return `${from.getDate()}–${to.getDate()} ${MONTH_ABBRS[from.getMonth()]} ${from.getFullYear()}`;
+  }
+  return `${formatShortDate(start)} – ${formatShortDate(end)} ${to.getFullYear()}`;
+}
+
+/** The current calendar month as a billing period. */
+export function currentMonthPeriod(): { start: string; end: string } {
+  const now = new Date();
+  return {
+    start: toISODate(new Date(now.getFullYear(), now.getMonth(), 1)),
+    end: toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
+}
+
+/**
+ * Largest-remainder split of an integer centavo amount across weighted shares,
+ * so the pieces ALWAYS add back up to the total (no lost or double-peso).
+ */
+function allocateCentavos(totalCents: number, weights: number[]): number[] {
+  if (weights.length === 0) return [];
+  const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
+  const safeWeights = weightSum > 0 ? weights : weights.map(() => 1);
+  const safeSum = weightSum > 0 ? weightSum : safeWeights.length;
+  const raw = safeWeights.map((weight) => (totalCents * weight) / safeSum);
+  const cents = raw.map((value) => Math.floor(value));
+  let remainder = totalCents - cents.reduce((sum, value) => sum + value, 0);
+  const order = raw
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction || a.index - b.index);
+  let cursor = 0;
+  while (remainder > 0) {
+    cents[order[cursor % order.length].index] += 1;
+    cursor += 1;
+    remainder -= 1;
+  }
+  return cents;
+}
+
+export interface AllocationInput {
+  propertyId: string;
+  tenantIds: string[];
+  total: number;
+  method: AllocationMethod;
+  customAmounts?: Record<string, number>;
+}
+
+/**
+ * Split `total` across the given tenants. Equal / by-room / by-occupancy use
+ * integer-centavos math with largest-remainder rounding, so shares always add
+ * up to the total (e.g. ₱800 ÷ 3 = ₱266.70 / ₱266.70 / ₱266.60). Custom uses
+ * the typed amounts as-is; callers validate that they sum to the total.
+ */
+export function computeAllocation(
+  data: LandlordData,
+  input: AllocationInput
+): ExpenseAllocation[] {
+  const subjects = input.tenantIds
+    .map((id) => data.tenants.find((tenant) => tenant.id === id))
+    .filter((tenant): tenant is LandlordTenant => Boolean(tenant));
+  if (subjects.length === 0) return [];
+
+  if (input.method === 'custom') {
+    return subjects.map((tenant) => ({
+      tenantId: tenant.id,
+      amount: roundMoney(Math.max(0, input.customAmounts?.[tenant.id] ?? 0)),
+    }));
+  }
+
+  const roomCounts = new Map<string, number>();
+  for (const tenant of subjects) {
+    const key = tenant.roomId ?? tenant.id;
+    roomCounts.set(key, (roomCounts.get(key) ?? 0) + 1);
+  }
+
+  const property = data.properties.find((item) => item.id === input.propertyId);
+  const weights = subjects.map((tenant) => {
+    if (input.method === 'byRoom') {
+      const key = tenant.roomId ?? tenant.id;
+      return 1 / (roomCounts.get(key) ?? 1);
+    }
+    if (input.method === 'byOccupancy') {
+      const room = property?.rooms.find((item) => item.id === tenant.roomId);
+      return Math.max(1, room?.maxCapacity ?? 1);
+    }
+    return 1;
+  });
+
+  const totalCents = Math.round(input.total * 100);
+  const shares = allocateCentavos(totalCents, weights);
+  return subjects.map((tenant, index) => ({
+    tenantId: tenant.id,
+    amount: shares[index] / 100,
+  }));
+}
+
+export interface NewSharedExpenseInput {
+  propertyId: string;
+  category: ExpenseCategory;
+  description?: string;
+  periodStart: string;
+  periodEnd: string;
+  amount: number;
+  billDate: string;
+  dueDate: string;
+  attachmentName?: string;
+  attachmentUri?: string;
+  allocationMethod: AllocationMethod;
+  tenantIds: string[];
+  customAmounts?: Record<string, number>;
+  landlordId?: string;
+}
+
+function validateSharedExpenseInput(input: NewSharedExpenseInput): {
+  property: LandlordProperty;
+  amount: number;
+  tenantIds: string[];
+} {
+  const property = ownedPropertyOrThrow(input.propertyId, input.landlordId);
+  if (!EXPENSE_CATEGORIES.includes(input.category)) {
+    throw new BillingError('Choose an expense category.');
+  }
+  const amount = roundMoney(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new BillingError('Enter a total amount greater than ₱0.');
+  }
+  const periodStart = parseISODate(input.periodStart);
+  const periodEnd = parseISODate(input.periodEnd);
+  if (!periodStart) throw new BillingError('Enter a valid period start (YYYY-MM-DD).');
+  if (!periodEnd) throw new BillingError('Enter a valid period end (YYYY-MM-DD).');
+  if (periodStart.getTime() > periodEnd.getTime()) {
+    throw new BillingError('The period start cannot be after the end.');
+  }
+  if (!parseISODate(input.billDate)) throw new BillingError('Enter a valid bill date (YYYY-MM-DD).');
+  if (!parseISODate(input.dueDate)) throw new BillingError('Enter a valid due date (YYYY-MM-DD).');
+
+  const eligible = new Set(eligibleTenantsOf(state, property.id).map((tenant) => tenant.id));
+  const tenantIds = [...new Set(input.tenantIds)].filter((id) => eligible.has(id));
+  if (tenantIds.length === 0) {
+    throw new BillingError('Select at least one tenant with an occupied room.');
+  }
+
+  if (input.allocationMethod === 'custom') {
+    const custom = input.customAmounts ?? {};
+    let sum = 0;
+    for (const id of tenantIds) {
+      const value = Number(custom[id]);
+      if (!Number.isFinite(value) || value < 0) {
+        throw new BillingError('Custom amounts must be ₱0 or more.');
+      }
+      sum += value;
+    }
+    if (Math.abs(roundMoney(sum) - amount) > 0.009) {
+      throw new BillingError(
+        `Custom amounts must add up to ${formatPeso(amount)} — they currently total ${formatPeso(
+          roundMoney(sum)
+        )}.`
+      );
+    }
+  }
+
+  return { property, amount, tenantIds };
+}
+
+function buildAllocation(
+  data: LandlordData,
+  input: NewSharedExpenseInput,
+  property: LandlordProperty,
+  amount: number,
+  tenantIds: string[]
+): ExpenseAllocation[] {
+  return computeAllocation(data, {
+    propertyId: property.id,
+    tenantIds,
+    total: amount,
+    method: input.allocationMethod,
+    customAmounts: input.customAmounts,
+  });
+}
+
+/** Record a confirmed shared expense with frozen per-tenant shares. */
+export async function createSharedExpense(
+  input: NewSharedExpenseInput
+): Promise<SharedExpense> {
+  const { property, amount, tenantIds } = validateSharedExpenseInput(input);
+  const allocations = buildAllocation(state, input, property, amount, tenantIds);
+  const expense: SharedExpense = {
+    id: Crypto.randomUUID(),
+    propertyId: property.id,
+    category: input.category,
+    description: input.description?.trim() || undefined,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
+    amount,
+    billDate: input.billDate,
+    dueDate: input.dueDate,
+    attachmentName: input.attachmentName?.trim() || undefined,
+    attachmentUri: input.attachmentUri,
+    allocationMethod: input.allocationMethod,
+    tenantIds,
+    allocations,
+    createdAt: new Date().toISOString(),
+  };
+  setState({
+    ...state,
+    sharedExpenses: [expense, ...state.sharedExpenses],
+    activities: [
+      {
+        id: Crypto.randomUUID(),
+        kind: 'payment',
+        title: 'Shared expense recorded',
+        detail: [
+          input.category,
+          formatPeso(amount),
+          property.name,
+          `${tenantIds.length} tenants`,
+        ].join(' · '),
+        at: expense.createdAt,
+      },
+      ...state.activities,
+    ],
+    notifications: notifyLandlord(
+      {
+        kind: 'billing',
+        title: `Shared expense · ${input.category}`,
+        detail: [formatPeso(amount), property.name, `${tenantIds.length} tenants`].join(' · '),
+        link: { kind: 'expense', expenseId: expense.id },
+      },
+      state.notifications,
+      expense.createdAt
+    ),
+  });
+  await persist();
+  return expense;
+}
+
+/**
+ * Update a shared expense. Allocations are recomputed; statements already
+ * generated keep their frozen snapshot (corrections handle finalized bills).
+ */
+export async function updateSharedExpense(
+  expenseId: string,
+  input: NewSharedExpenseInput
+): Promise<SharedExpense> {
+  const existing = state.sharedExpenses.find((item) => item.id === expenseId);
+  if (!existing) throw new BillingError('That shared expense no longer exists.');
+  const { property, amount, tenantIds } = validateSharedExpenseInput(input);
+  const allocations = buildAllocation(state, input, property, amount, tenantIds);
+  const now = new Date().toISOString();
+  const updated: SharedExpense = {
+    ...existing,
+    propertyId: property.id,
+    category: input.category,
+    description: input.description?.trim() || undefined,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
+    amount,
+    billDate: input.billDate,
+    dueDate: input.dueDate,
+    attachmentName: input.attachmentName?.trim() || undefined,
+    attachmentUri: input.attachmentUri,
+    allocationMethod: input.allocationMethod,
+    tenantIds,
+    allocations,
+  };
+  setState({
+    ...state,
+    sharedExpenses: state.sharedExpenses.map((item) =>
+      item.id === expenseId ? updated : item
+    ),
+    activities: [
+      {
+        id: Crypto.randomUUID(),
+        kind: 'payment',
+        title: 'Shared expense updated',
+        detail: [input.category, formatPeso(amount), property.name].join(' · '),
+        at: now,
+      },
+      ...state.activities,
+    ],
+  });
+  await persist();
+  return updated;
+}
+
+/** Remove a shared expense. Statements generated from it keep their snapshot. */
+export async function deleteSharedExpense(expenseId: string): Promise<void> {
+  const existing = state.sharedExpenses.find((item) => item.id === expenseId);
+  if (!existing) throw new BillingError('That shared expense no longer exists.');
+  const now = new Date().toISOString();
+  setState({
+    ...state,
+    sharedExpenses: state.sharedExpenses.filter((item) => item.id !== expenseId),
+    activities: [
+      {
+        id: Crypto.randomUUID(),
+        kind: 'payment',
+        title: 'Shared expense removed',
+        detail: [existing.category, formatPeso(existing.amount)].join(' · '),
+        at: now,
+      },
+      ...state.activities,
+    ],
+  });
+  await persist();
+}
+
+/* ----------------------------- billing statements ------------------------ */
+
+function overlapsPeriod(
+  item: { periodStart: string; periodEnd: string },
+  start: string,
+  end: string
+): boolean {
+  return item.periodStart <= end && item.periodEnd >= start;
+}
+
+export function statementTotalDue(statement: TenantStatement): number {
+  const charges =
+    statement.lines.reduce((sum, line) => sum + line.amount, 0) + statement.previousBalance;
+  const corrections = statement.corrections.reduce((sum, item) => sum + item.amount, 0);
+  return roundMoney(charges + corrections);
+}
+
+export interface GenerateStatementsInput {
+  propertyId: string;
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
+  landlordId?: string;
+}
+
+/**
+ * Generate DRAFT statements for one property and billing period. Tenants who
+ * already have a statement for the same period are skipped. Rent comes from an
+ * existing bill in the period when one exists, otherwise it is estimated from
+ * the tenant's monthly rent. Expenses contribute their frozen allocations.
+ * Drafts never create RentBills — finalizing does.
+ */
+export async function generateStatements(
+  input: GenerateStatementsInput
+): Promise<number> {
+  const property = ownedPropertyOrThrow(input.propertyId, input.landlordId);
+  const periodStart = parseISODate(input.periodStart);
+  const periodEnd = parseISODate(input.periodEnd);
+  if (!periodStart) throw new BillingError('Enter a valid period start (YYYY-MM-DD).');
+  if (!periodEnd) throw new BillingError('Enter a valid period end (YYYY-MM-DD).');
+  if (periodStart.getTime() > periodEnd.getTime()) {
+    throw new BillingError('The period start cannot be after the end.');
+  }
+  if (!parseISODate(input.dueDate)) {
+    throw new BillingError('Enter a valid due date (YYYY-MM-DD).');
+  }
+
+  const covered = new Set(
+    state.statements
+      .filter(
+        (statement) =>
+          statement.propertyId === property.id &&
+          statement.periodStart === input.periodStart &&
+          statement.periodEnd === input.periodEnd
+      )
+      .map((statement) => statement.tenantId)
+  );
+  const subjects = eligibleTenantsOf(state, property.id).filter(
+    (tenant) => !covered.has(tenant.id)
+  );
+  if (subjects.length === 0) return 0;
+
+  const expenses = state.sharedExpenses.filter(
+    (expense) =>
+      expense.propertyId === property.id &&
+      overlapsPeriod(expense, input.periodStart, input.periodEnd)
+  );
+  const now = new Date().toISOString();
+
+  const created: TenantStatement[] = [];
+  for (const tenant of subjects) {
+    const lines: StatementLine[] = [];
+    const rentBill = state.bills.find(
+      (bill) =>
+        bill.tenantId === tenant.id &&
+        bill.kind !== 'expense' &&
+        bill.dueDate >= input.periodStart &&
+        bill.dueDate <= input.periodEnd
+    );
+    if (rentBill) {
+      lines.push({
+        id: Crypto.randomUUID(),
+        kind: 'rent',
+        label: 'Monthly rent',
+        amount: rentBill.amount,
+        billId: rentBill.id,
+      });
+    } else if (tenant.monthlyRent > 0) {
+      lines.push({
+        id: Crypto.randomUUID(),
+        kind: 'rent',
+        label: 'Monthly rent',
+        amount: tenant.monthlyRent,
+      });
+    }
+    for (const expense of expenses) {
+      const allocation = expense.allocations.find(
+        (item) => item.tenantId === tenant.id
+      );
+      if (!allocation || allocation.amount <= 0) continue;
+      lines.push({
+        id: Crypto.randomUUID(),
+        kind: expense.category,
+        label: `${expense.category} share`,
+        amount: allocation.amount,
+        expenseId: expense.id,
+      });
+    }
+    const priorBills = state.bills.filter(
+      (bill) => bill.tenantId === tenant.id && !bill.paidAt && bill.dueDate < input.periodStart
+    );
+    const previousBalance = roundMoney(
+      priorBills.reduce((sum, bill) => sum + bill.amount, 0)
+    );
+    if (lines.length === 0 && previousBalance <= 0) continue;
+
+    created.push({
+      id: Crypto.randomUUID(),
+      propertyId: property.id,
+      tenantId: tenant.id,
+      roomId: tenant.roomId ?? '',
+      periodStart: input.periodStart,
+      periodEnd: input.periodEnd,
+      dueDate: input.dueDate,
+      status: 'draft',
+      lines,
+      previousBalance,
+      previousBalanceBillIds: priorBills.map((bill) => bill.id),
+      corrections: [],
+      createdAt: now,
+    });
+  }
+  if (created.length === 0) return 0;
+
+  setState({
+    ...state,
+    statements: [...created, ...state.statements],
+    activities: [
+      {
+        id: Crypto.randomUUID(),
+        kind: 'payment',
+        title: 'Draft bills generated',
+        detail: [
+          `${created.length} tenants`,
+          property.name,
+          formatPeriodLabel(input.periodStart, input.periodEnd),
+        ].join(' · '),
+        at: now,
+      },
+      ...state.activities,
+    ],
+    notifications: notifyLandlord(
+      {
+        kind: 'billing',
+        title: 'Draft bills generated',
+        detail: [
+          `${created.length} tenants`,
+          property.name,
+          formatPeriodLabel(input.periodStart, input.periodEnd),
+        ].join(' · '),
+        link: { kind: 'statements' },
+      },
+      state.notifications,
+      now
+    ),
+  });
+  await persist();
+  return created.length;
+}
+
+/**
+ * Finalize a draft: freeze its calculation, post each line as a real RentBill,
+ * and notify the landlord. Finalized amounts never change silently afterwards.
+ */
+export async function finalizeStatement(statementId: string): Promise<TenantStatement> {
+  const statement = state.statements.find((item) => item.id === statementId);
+  if (!statement) throw new BillingError('That bill no longer exists.');
+  if (statement.status === 'finalized') {
+    throw new BillingError('That bill is already finalized.');
+  }
+
+  const now = new Date().toISOString();
+  const periodLabel = formatPeriodLabel(statement.periodStart, statement.periodEnd);
+  const createdBills: RentBill[] = [];
+  const lines = statement.lines.map((line): StatementLine => {
+    if (line.billId) return line;
+    const bill: RentBill = {
+      id: Crypto.randomUUID(),
+      tenantId: statement.tenantId,
+      propertyId: statement.propertyId,
+      roomId: statement.roomId,
+      amount: line.amount,
+      dueDate: statement.dueDate,
+      period: periodLabel,
+      kind: line.kind === 'rent' ? 'rent' : 'expense',
+      note: line.kind === 'rent' ? undefined : line.label,
+    };
+    createdBills.push(bill);
+    return { ...line, billId: bill.id };
+  });
+
+  const tenant = state.tenants.find((item) => item.id === statement.tenantId);
+  const property = state.properties.find((item) => item.id === statement.propertyId);
+  const totalDue = statementTotalDue({ ...statement, lines });
+
+  const finalized: TenantStatement = {
+    ...statement,
+    lines,
+    status: 'finalized',
+    finalizedAt: now,
+  };
+
+  setState({
+    ...state,
+    statements: state.statements.map((item) =>
+      item.id === statementId ? finalized : item
+    ),
+    bills: [...createdBills, ...state.bills],
+    activities: [
+      {
+        id: Crypto.randomUUID(),
+        kind: 'payment',
+        title: 'Statement finalized',
+        detail: [
+          tenant?.fullName ?? 'Tenant',
+          formatPeso(totalDue),
+          property?.name ?? '',
+          periodLabel,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        at: now,
+        tenantId: statement.tenantId,
+      },
+      ...state.activities,
+    ],
+    notifications: notifyLandlord(
+      {
+        kind: 'billing',
+        title: 'Statement finalized',
+        detail: `${tenant?.fullName ?? 'Tenant'} · ${formatPeso(totalDue)} due ${formatShortDate(
+          statement.dueDate
+        )}.`,
+        link: { kind: 'statement', statementId },
+      },
+      state.notifications,
+      now
+    ),
+  });
+  await persist();
+  return finalized;
+}
+
+/** Drop a draft statement. Finalized statements must be corrected, not removed. */
+export async function discardStatement(statementId: string): Promise<void> {
+  const statement = state.statements.find((item) => item.id === statementId);
+  if (!statement) throw new BillingError('That bill no longer exists.');
+  if (statement.status === 'finalized') {
+    throw new BillingError('Finalized bills cannot be discarded — add a correction instead.');
+  }
+  setState({
+    ...state,
+    statements: state.statements.filter((item) => item.id !== statementId),
+  });
+  await persist();
+}
+
+export interface StatementCorrectionInput {
+  label: string;
+  amount: number;
+  reason: string;
+}
+
+/**
+ * Apply a signed correction to a FINALIZED statement. Positive amounts charge
+ * the tenant more; negative amounts credit them. The change is recorded as a
+ * visible, auditable row — never a silent recalculation.
+ */
+export async function addStatementCorrection(
+  statementId: string,
+  input: StatementCorrectionInput
+): Promise<TenantStatement> {
+  const statement = state.statements.find((item) => item.id === statementId);
+  if (!statement) throw new BillingError('That bill no longer exists.');
+  if (statement.status !== 'finalized') {
+    throw new BillingError('Only finalized bills can be corrected.');
+  }
+  const label = input.label.trim();
+  const reason = input.reason.trim();
+  const amount = roundMoney(input.amount);
+  if (!label) throw new BillingError('Enter a short label for the correction.');
+  if (!Number.isFinite(amount) || amount === 0) {
+    throw new BillingError('Enter a correction amount other than ₱0.');
+  }
+  if (!reason) throw new BillingError('Enter a reason for the correction.');
+
+  const correction: StatementCorrection = {
+    id: Crypto.randomUUID(),
+    label,
+    amount,
+    reason,
+    at: new Date().toISOString(),
+  };
+  const updated: TenantStatement = {
+    ...statement,
+    corrections: [...statement.corrections, correction],
+  };
+  setState({
+    ...state,
+    statements: state.statements.map((item) =>
+      item.id === statementId ? updated : item
+    ),
+    activities: [
+      {
+        id: Crypto.randomUUID(),
+        kind: 'payment',
+        title: 'Statement corrected',
+        detail: [label, formatPeso(amount), reason].join(' · '),
+        at: correction.at,
+        tenantId: statement.tenantId,
+      },
+      ...state.activities,
+    ],
+  });
+  await persist();
+  return updated;
+}
+
+/* --------------------------------- selectors ----------------------------- */
+
+/** Distinct expense + statement periods for a property, newest first. */
+export function expensePeriods(
+  data: LandlordData,
+  propertyId?: string | null
+): ExpensePeriod[] {
+  const seen = new Map<string, ExpensePeriod>();
+  const add = (start: string, end: string): void => {
+    const key = `${start}::${end}`;
+    if (!seen.has(key)) {
+      seen.set(key, {
+        start,
+        end,
+        label: formatPeriodLabel(start, end),
+      });
+    }
+  };
+  for (const expense of data.sharedExpenses) {
+    if (propertyId && expense.propertyId !== propertyId) continue;
+    add(expense.periodStart, expense.periodEnd);
+  }
+  for (const statement of data.statements) {
+    if (propertyId && statement.propertyId !== propertyId) continue;
+    add(statement.periodStart, statement.periodEnd);
+  }
+  return [...seen.values()].sort((a, b) => b.start.localeCompare(a.start));
+}
+
+export interface ExpensePeriod {
+  start: string;
+  end: string;
+  label: string;
+}
+
+export type BillingStatusTone = 'none' | 'draft' | 'finalized' | 'mixed';
+
+export interface ExpenseDashboardSummary {
+  periodStart: string;
+  periodEnd: string;
+  periodLabel: string;
+  electricity: number;
+  water: number;
+  other: number;
+  total: number;
+  expenseCount: number;
+  tenantCount: number;
+  draftCount: number;
+  finalizedCount: number;
+  statusLabel: string;
+  statusTone: BillingStatusTone;
+}
+
+export interface ExpenseFilter {
+  propertyId?: string | null;
+  periodStart: string;
+  periodEnd: string;
+}
+
+/** Totals + billing status for the expense dashboard's selected period. */
+export function summarizeExpenses(
+  data: LandlordData,
+  filter: ExpenseFilter
+): ExpenseDashboardSummary {
+  const expenses = data.sharedExpenses.filter(
+    (expense) =>
+      (!filter.propertyId || expense.propertyId === filter.propertyId) &&
+      overlapsPeriod(expense, filter.periodStart, filter.periodEnd)
+  );
+  const sumCategories = (categories: ExpenseCategory[]): number =>
+    expenses
+      .filter((expense) => categories.includes(expense.category))
+      .reduce((sum, expense) => sum + expense.amount, 0);
+
+  const electricity = sumCategories(['Electricity']);
+  const water = sumCategories(['Water']);
+  const total = roundMoney(expenses.reduce((sum, expense) => sum + expense.amount, 0));
+  const other = roundMoney(total - electricity - water);
+
+  const propertyIds = filter.propertyId
+    ? [filter.propertyId]
+    : data.properties.map((property) => property.id);
+  const tenantCount = data.tenants.filter(
+    (tenant) =>
+      propertyIds.includes(tenant.propertyId) &&
+      tenant.status === 'Active' &&
+      tenant.roomId
+  ).length;
+
+  const statements = data.statements.filter(
+    (statement) =>
+      (!filter.propertyId || statement.propertyId === filter.propertyId) &&
+      statement.periodStart === filter.periodStart &&
+      statement.periodEnd === filter.periodEnd
+  );
+  const draftCount = statements.filter((item) => item.status === 'draft').length;
+  const finalizedCount = statements.filter((item) => item.status === 'finalized').length;
+
+  let statusLabel: string;
+  let statusTone: BillingStatusTone;
+  if (statements.length === 0) {
+    statusLabel = expenses.length > 0 ? 'Not billed yet' : 'No expenses';
+    statusTone = 'none';
+  } else if (draftCount > 0 && finalizedCount > 0) {
+    statusLabel = `${finalizedCount} finalized · ${draftCount} estimated`;
+    statusTone = 'mixed';
+  } else if (draftCount > 0) {
+    statusLabel =
+      draftCount === 1 ? '1 draft bill (estimated)' : `${draftCount} draft bills (estimated)`;
+    statusTone = 'draft';
+  } else {
+    statusLabel =
+      finalizedCount === 1 ? 'Statement finalized' : 'All statements finalized';
+    statusTone = 'finalized';
+  }
+
+  return {
+    periodStart: filter.periodStart,
+    periodEnd: filter.periodEnd,
+    periodLabel: formatPeriodLabel(filter.periodStart, filter.periodEnd),
+    electricity: roundMoney(electricity),
+    water: roundMoney(water),
+    other,
+    total,
+    expenseCount: expenses.length,
+    tenantCount,
+    draftCount,
+    finalizedCount,
+    statusLabel,
+    statusTone,
+  };
+}
+
+export interface ExpenseView extends SharedExpense {
+  propertyName: string;
+  tenantCount: number;
+  periodLabel: string;
+}
+
+export interface ExpenseFilterInput {
+  propertyId?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+}
+
+export function toExpenseViews(
+  data: LandlordData,
+  filter: ExpenseFilterInput = {}
+): ExpenseView[] {
+  return data.sharedExpenses
+    .filter(
+      (expense) =>
+        (!filter.propertyId || expense.propertyId === filter.propertyId) &&
+        (!filter.periodStart || !filter.periodEnd ||
+          overlapsPeriod(expense, filter.periodStart, filter.periodEnd))
+    )
+    .map((expense) => ({
+      ...expense,
+      propertyName:
+        data.properties.find((property) => property.id === expense.propertyId)?.name ??
+        'Property',
+      tenantCount: expense.allocations.length,
+      periodLabel: formatPeriodLabel(expense.periodStart, expense.periodEnd),
+    }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export interface ExpenseAllocationRow {
+  tenantId: string;
+  tenantName: string;
+  roomLabel: string;
+  amount: number;
+}
+
+/** Allocation rows with tenant + room names resolved for display. */
+export function expenseAllocationRows(
+  data: LandlordData,
+  expense: Pick<SharedExpense, 'propertyId' | 'allocations'>
+): ExpenseAllocationRow[] {
+  const property = data.properties.find((item) => item.id === expense.propertyId);
+  return expense.allocations.map((allocation) => {
+    const tenant = data.tenants.find((item) => item.id === allocation.tenantId);
+    const room = property?.rooms.find((item) => item.id === tenant?.roomId);
+    return {
+      tenantId: allocation.tenantId,
+      tenantName: tenant?.fullName ?? 'Tenant',
+      roomLabel: room?.label ?? '',
+      amount: allocation.amount,
+    };
+  });
+}
+
+export interface StatementView extends TenantStatement {
+  tenantName: string;
+  propertyName: string;
+  roomLabel: string;
+  rentAmount: number;
+  electricityAmount: number;
+  waterAmount: number;
+  otherAmount: number;
+  /** Rent + allocations + carried balance. */
+  chargesTotal: number;
+  correctionsTotal: number;
+  totalDue: number;
+  /** Payments recorded against this statement's linked bills. */
+  paymentsApplied: number;
+  remaining: number;
+}
+
+function toStatementView(data: LandlordData, statement: TenantStatement): StatementView {
+  const tenant = data.tenants.find((item) => item.id === statement.tenantId);
+  const property = data.properties.find((item) => item.id === statement.propertyId);
+  const room = property?.rooms.find((item) => item.id === statement.roomId);
+
+  let rentAmount = 0;
+  let electricityAmount = 0;
+  let waterAmount = 0;
+  let otherAmount = 0;
+  for (const line of statement.lines) {
+    if (line.kind === 'rent') rentAmount += line.amount;
+    else if (line.kind === 'Electricity') electricityAmount += line.amount;
+    else if (line.kind === 'Water') waterAmount += line.amount;
+    else otherAmount += line.amount;
+  }
+
+  const chargesTotal = roundMoney(
+    statement.lines.reduce((sum, line) => sum + line.amount, 0) + statement.previousBalance
+  );
+  const correctionsTotal = roundMoney(
+    statement.corrections.reduce((sum, item) => sum + item.amount, 0)
+  );
+  const totalDue = roundMoney(chargesTotal + correctionsTotal);
+
+  const billIds = new Set(
+    [...statement.lines.map((line) => line.billId), ...statement.previousBalanceBillIds].filter(
+      (id): id is string => Boolean(id)
+    )
+  );
+  const paymentsApplied = roundMoney(
+    data.payments
+      .filter((payment) => billIds.has(payment.billId))
+      .reduce((sum, payment) => sum + payment.amount, 0)
+  );
+
+  return {
+    ...statement,
+    tenantName: tenant?.fullName ?? 'Tenant',
+    propertyName: property?.name ?? 'Property',
+    roomLabel: room?.label ?? '',
+    rentAmount: roundMoney(rentAmount),
+    electricityAmount: roundMoney(electricityAmount),
+    waterAmount: roundMoney(waterAmount),
+    otherAmount: roundMoney(otherAmount),
+    chargesTotal,
+    correctionsTotal,
+    totalDue,
+    paymentsApplied,
+    remaining: Math.max(0, roundMoney(totalDue - paymentsApplied)),
+  };
+}
+
+export interface StatementFilter {
+  propertyId?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+}
+
+/** Matching statements as display views; drafts sort before finalized, then by name. */
+export function toStatementViews(
+  data: LandlordData,
+  filter: StatementFilter = {}
+): StatementView[] {
+  return data.statements
+    .filter(
+      (statement) =>
+        (!filter.propertyId || statement.propertyId === filter.propertyId) &&
+        (!filter.periodStart || statement.periodStart === filter.periodStart) &&
+        (!filter.periodEnd || statement.periodEnd === filter.periodEnd)
+    )
+    .map((statement) => toStatementView(data, statement))
+    .sort((a, b) => {
+      if (a.status !== b.status) return a.status === 'draft' ? -1 : 1;
+      return a.tenantName.localeCompare(b.tenantName);
+    });
+}
+
+/** One statement as a display view (for the detail screen). */
+export function statementViewOf(data: LandlordData, statementId: string): StatementView | null {
+  const statement = data.statements.find((item) => item.id === statementId);
+  return statement ? toStatementView(data, statement) : null;
+}
+
+/** One shared expense as a display view (for the detail screen). */
+export function expenseViewOf(data: LandlordData, expenseId: string): ExpenseView | null {
+  const expense = data.sharedExpenses.find((item) => item.id === expenseId);
+  if (!expense) return null;
+  return {
+    ...expense,
+    propertyName:
+      data.properties.find((property) => property.id === expense.propertyId)?.name ?? 'Property',
+    tenantCount: expense.allocations.length,
+    periodLabel: formatPeriodLabel(expense.periodStart, expense.periodEnd),
+  };
 }
