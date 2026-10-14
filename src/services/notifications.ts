@@ -2,19 +2,7 @@
  * BoardPoint notifications service.
  *
  * Notifications are seeded from mock data and their read state is persisted
-}
-
-export async function markAllNotificationsRead(): Promise<void> {
-  setNotifications(notifications.map((item) => ({ ...item, read: true })));
-  await persistReadIds();
-}
-
-export async function markNotificationRead(id: string): Promise<void> {
-  if (notifications.every((item) => item.id !== id || item.read)) return;
-  setNotifications(notifications.map((item) => (item.id === id ? { ...item, read: true } : item)));
-  await persistReadIds();
-}
-on-device (SecureStore / localStorage). A tiny observable store lets the
+ * on-device (SecureStore / localStorage). A tiny observable store lets the
  * alerts screen and the bottom-nav badge stay in sync. Swap the persistence for
  * a backend call later; the public API stays the same.
  *
@@ -24,19 +12,17 @@ on-device (SecureStore / localStorage). A tiny observable store lets the
  * shared `notifications.read` id list for both seeds and pushed items.
  */
 
-import { useSyncExternalStore } from 'react';
 import { renterNotifications, type AppNotification } from '@/data/mock';
 import type { NotificationCategory } from '@/data/types';
 import { storageGet, storageSet } from '@/services/storage';
 import { MONTH_ABBRS } from '@/utils/date';
 import * as Crypto from 'expo-crypto';
+import { useSyncExternalStore } from 'react';
 
 const READ_KEY = 'notifications.read';
-const ADDED_KEY = 'notifications.added';
+const PUSHED_KEY = 'notifications.pushed';
 
 const seeds: AppNotification[] = renterNotifications.map((item) => ({ ...item }));
-const STORAGE_KEY = 'notifications.read';
-const PUSHED_KEY = 'notifications.pushed';
 
 type PushedNotification = AppNotification & { createdAt: string };
 
@@ -76,38 +62,20 @@ export function useUnreadCount(): number {
 }
 
 async function persistReadIds(): Promise<void> {
-  const readIdsSet = notifications.filter((item) => item.read).map((item) => item.id);
-  await storageSet(READ_KEY, JSON.stringify(readIdsSet));
+  const ids = notifications.filter((item) => item.read).map((item) => item.id);
+  await storageSet(READ_KEY, JSON.stringify(ids));
 }
 
 /**
  * Adds a runtime notification (e.g. a rental request being accepted) to the top
- * of the feed and persists it so it survives a reload. Read state is tracked
- * separately, so a freshly added item starts unread.
+ * of the feed. Read state is tracked separately, so a freshly added item starts
+ * unread.
  */
 export async function addNotification(notification: AppNotification): Promise<void> {
   if (notifications.some((item) => item.id === notification.id)) return;
   setNotifications([notification, ...notifications]);
   await persistReadIds();
 }
-
-async function hydrate(): Promise<void> {
-  if (hydrated) return;
-  hydrated = true;
-  const [readRaw, pushedRaw] = await Promise.all([
-    storageGet(READ_KEY),
-    storageGet(PUSHED_KEY),
-  ]);
-  if (readRaw) {
-    try {
-      const parsed = JSON.parse(readRaw) as string[];
-      if (Array.isArray(parsed)) readIds = new Set(parsed);
-    } catch {
-      // Ignore malformed cache and keep the seeded read state.
-    }
-  }
-  loadPushed(pushedRaw);
-  setNotifications(rebuild());
 
 /** Rebuild the visible list from pushed items (newest first) plus the seeds. */
 function rebuild(): AppNotification[] {
@@ -135,6 +103,36 @@ function loadPushed(raw: string | null): void {
   } catch {
     // Ignore malformed cache and keep anything pushed at runtime.
   }
+}
+
+async function hydrate(): Promise<void> {
+  if (hydrated) return;
+  hydrated = true;
+  const [readRaw, pushedRaw] = await Promise.all([
+    storageGet(READ_KEY),
+    storageGet(PUSHED_KEY),
+  ]);
+  if (readRaw) {
+    try {
+      const parsed = JSON.parse(readRaw) as string[];
+      if (Array.isArray(parsed)) readIds = new Set(parsed);
+    } catch {
+      // Ignore malformed cache and keep the seeded read state.
+    }
+  }
+  loadPushed(pushedRaw);
+  setNotifications(rebuild());
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  setNotifications(notifications.map((item) => ({ ...item, read: true })));
+  await persistReadIds();
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  if (notifications.every((item) => item.id !== id || item.read)) return;
+  setNotifications(notifications.map((item) => (item.id === id ? { ...item, read: true } : item)));
+  await persistReadIds();
 }
 
 export interface PushNotificationInput {
@@ -172,4 +170,7 @@ export function pushNotification(input: PushNotificationInput): void {
   setNotifications([item, ...notifications]);
   void storageSet(PUSHED_KEY, JSON.stringify(pushed)).catch(() => undefined);
 }
-}
+
+// Load persisted read state and pushed items on startup.
+// Remove this line if you already call hydrate() elsewhere.
+void hydrate();
