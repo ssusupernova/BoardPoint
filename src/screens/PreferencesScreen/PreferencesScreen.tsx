@@ -1,24 +1,9 @@
-import {
-  useEffect,
-  useRef,
-  useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { BrandHeader } from '@/components/auth/BrandHeader/BrandHeader';
 import { ErrorBanner } from '@/components/auth/ErrorBanner/ErrorBanner';
+import { SaveConfirmationModal } from '@/components/renter/SaveConfirmationModal/SaveConfirmationModal';
 import { StatusBadge } from '@/components/renter/StatusBadge/StatusBadge';
-import { LocationSection } from '@/components/renter/sections/LocationSection/LocationSection';
 import { EssentialsSection } from '@/components/renter/sections/EssentialsSection/EssentialsSection';
+import { LocationSection } from '@/components/renter/sections/LocationSection/LocationSection';
 import { PreferencesSection } from '@/components/renter/sections/PreferencesSection/PreferencesSection';
 import { PrimaryButton } from '@/components/ui/PrimaryButton/PrimaryButton';
 import { routes } from '@/routes';
@@ -37,10 +22,28 @@ import {
   validateChecklist,
   type ChecklistErrors,
   type ChecklistForm,
-  } from '@/services/checklist';
-import { colors
+} from '@/services/checklist';
+import {
+  colors
 } from '@/theme';
 import { formatNumber } from '@/utils/date';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import {
+  useEffect,
+  useRef,
+  useState
+} from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styles } from './PreferencesScreen.styles';
 
 type SectionKey = 'location' | 'essentials';
@@ -56,6 +59,7 @@ export default function PreferencesScreen() {
   const [errors, setErrors] = useState<ChecklistErrors>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedVisible, setSavedVisible] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const innerTopRef = useRef(0);
@@ -131,9 +135,8 @@ export default function PreferencesScreen() {
     .filter((label): label is string => !!label);
   const overflow = mustLabels.length > 4 ? ` +${mustLabels.length - 4} more` : '';
   const summaryLine1 = `${roomLabel} for ${occupantsLabel}${budget}`;
-  const summaryLine2 = `Within ${form.radiusKm} km${
-    mustLabels.length ? ` · ${mustLabels.slice(0, 4).join(' + ')}${overflow}` : ''
-  }`;
+  const summaryLine2 = `Within ${form.radiusKm} km${mustLabels.length ? ` · ${mustLabels.slice(0, 4).join(' + ')}${overflow}` : ''
+    }`;
 
   const showBanner = submitAttempted && hasErrors(errors);
 

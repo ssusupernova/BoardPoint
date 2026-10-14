@@ -147,6 +147,25 @@ export const styles = StyleSheet.create({
   action: {
     marginTop: spacing.xl,
   },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.error,
+    backgroundColor: colors.errorBg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  errorText: {
+    flex: 1,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.error,
+  },
   statusCard: {
     gap: spacing.md,
     borderRadius: radii.lg,
@@ -164,6 +183,19 @@ export const styles = StyleSheet.create({
   },
   secondaryAction: {
     marginTop: spacing.sm,
+  },
+  closedReason: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: spacing.sm,
+  },
+  closedReasonText: {
+    flex: 1,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
   },
   note: {
     marginTop: spacing.md,
