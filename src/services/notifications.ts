@@ -161,6 +161,12 @@ void hydrate().catch(() => {
   // Keep the seeded notifications available if storage fails.
 });
 
+export async function addNotification(notification: AppNotification): Promise<void> {
+  if (notifications.some((item) => item.id === notification.id)) return;
+  setNotifications([notification, ...notifications]);
+  await persistReadIds();
+}
+
 export async function markAllNotificationsRead(): Promise<void> {
   await hydrate();
 
