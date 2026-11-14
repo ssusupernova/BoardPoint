@@ -1,3 +1,4 @@
+import { BrandHeader } from '@/components/common/BrandHeader/BrandHeader';
 import { ProfileAvatar } from '@/components/common/ProfileAvatar/ProfileAvatar';
 import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
 
@@ -17,7 +18,7 @@ import {
   type BillView,
 } from '@/services/landlordData';
 import { formatPeso } from '@/utils/currency';
-import { formatRelativeTime, formatShortDate } from '@/utils/date';
+import { formatLongDate, formatRelativeTime, formatShortDate } from '@/utils/date';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -43,12 +44,6 @@ const ACTIVITY_ICONS: Record<ActivityKind, { icon: IconName; info: boolean }> = 
   availability: { icon: 'key-outline', info: true },
   request: { icon: 'mail-unread-outline', info: true },
 };
-
-function greetingForHour(hour: number): string {
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
 
 type SectionHeaderProps = {
   title: string;
@@ -91,7 +86,7 @@ export default function LandlordDashboardScreen() {
   const summary = useLandlordSummary();
 
   const firstName = session?.user?.fullName?.split(' ')[0] ?? 'Landlord';
-  const greeting = greetingForHour(new Date().getHours());
+  const today = formatLongDate(new Date());
 
   const properties = useMemo(
     () =>
@@ -258,73 +253,56 @@ export default function LandlordDashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.inner}>
-          {/* Header: brand, notifications, avatar */}
-          <View style={dashboardStyles.headerRow}>
-            <View style={dashboardStyles.brandGroup}>
-              <View
-                style={dashboardStyles.logoIconContainer}
-                accessibilityRole="image"
-                accessibilityLabel="BoardPoint logo"
-              >
-                <Ionicons
-                  name="home"
-                  size={20}
-                  color={LANDLORD_THEME.onPrimary}
+          <BrandHeader
+            subtitle="RENTAL ACCOUNT"
+            trailing={
+              <View style={dashboardStyles.headerActions}>
+                <Pressable
+                  onPress={openNotifications}
+                  style={({ pressed }) => [
+                    dashboardStyles.bellButton,
+                    pressed && dashboardStyles.bellButtonPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    unread > 0
+                      ? `Notifications, ${unread} unread`
+                      : 'Notifications'
+                  }
+                >
+                  <Ionicons
+                    name={unread > 0 ? 'notifications' : 'notifications-outline'}
+                    size={20}
+                    color={LANDLORD_THEME.textPrimary}
+                  />
+                  {unread > 0 ? (
+                    <View style={dashboardStyles.bellBadge}>
+                      <Text style={dashboardStyles.bellBadgeText}>
+                        {unread > 9 ? '9+' : unread}
+                      </Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+
+                <ProfileAvatar
+                  name={session?.user?.fullName ?? 'Landlord'}
+                  size={42}
+                  onPress={() => router.push(routes.landlordProfile)}
+                  accessibilityLabel="Open profile"
                 />
               </View>
-              <View style={dashboardStyles.headerTextCol}>
-                <Text style={styles.brandTitle}>BoardPoint</Text>
-                <Text style={styles.brandSubtitle}>
-                  RENTAL OPERATIONS, MAPPED
-                </Text>
-              </View>
-            </View>
+            }
+          />
 
-            <View style={dashboardStyles.headerActions}>
-              <Pressable
-                onPress={openNotifications}
-                style={({ pressed }) => [
-                  dashboardStyles.bellButton,
-                  pressed && dashboardStyles.bellButtonPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  unread > 0
-                    ? `Notifications, ${unread} unread`
-                    : 'Notifications'
-                }
-              >
-                <Ionicons
-                  name={unread > 0 ? 'notifications' : 'notifications-outline'}
-                  size={20}
-                  color={LANDLORD_THEME.textPrimary}
-                />
-                {unread > 0 ? (
-                  <View style={dashboardStyles.bellBadge}>
-                    <Text style={dashboardStyles.bellBadgeText}>
-                      {unread > 9 ? '9+' : unread}
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-
-              <ProfileAvatar
-                name={session?.user?.fullName ?? 'Landlord'}
-                size={42}
-                onPress={() => router.push(routes.landlordProfile)}
-                accessibilityLabel="Open profile"
-              />
-            </View>
-          </View>
-
-          {/* Greeting */}
           <View style={dashboardStyles.greetingBlock}>
+            <Text style={dashboardStyles.eyebrow}>Landlord dashboard</Text>
+            <Text style={dashboardStyles.date}>{today}</Text>
             <Text style={dashboardStyles.greetingTitle}>
-              {greeting}, Landlord!
+              Mabuhay ka, {firstName}!
             </Text>
             <Text style={dashboardStyles.greetingSubtitle}>
-              Welcome back, {firstName}. Here is what is happening across your
-              properties today.
+              Here&apos;s a snapshot of your listings, tenants, and what&apos;s
+              happening across your properties today.
             </Text>
           </View>
 

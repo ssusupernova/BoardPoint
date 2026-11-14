@@ -1,21 +1,50 @@
-import { SubmitButton } from '@/components/landlord/SubmitButton';
-import { routes } from '@/routes';
-import { useAuthSession } from '@/services/auth';
+import { SubmitButton } from "@/components/landlord/SubmitButton";
+import { routes } from "@/routes";
+import { useAuthSession } from "@/services/auth";
 import {
+  VERIFICATION_DEMO_NOTICE,
+  VERIFICATION_SUCCESS_MESSAGE,
   submitLandlordVerification,
-} from '@/services/verificationDemo';
-import { accountStyles as acct } from '@/styles/landlord/account.styles';
-import { LANDLORD_THEME, styles } from '@/styles/landlord/styles';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "@/services/verificationDemo";
+import { accountStyles as acct } from "@/styles/landlord/account.styles";
+import { LANDLORD_THEME, styles } from "@/styles/landlord/styles";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useState } from "react";
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const PHONE_PATTERN = /^[+()\d\s-]{7,}$/;
 
-type Errors = Partial<Record<'fullName' | 'phone' | 'city' | 'idNumber' | 'confirmed', string>>;
+/**
+ * `Alert.alert` is a no-op on react-native-web, so on web we fall back to the
+ * browser dialog (with an optional callback fired after the user dismisses it).
+ */
+function notify(title: string, message: string, onDismiss?: () => void) {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    onDismiss?.();
+    return;
+  }
+  Alert.alert(
+    title,
+    message,
+    onDismiss ? [{ text: "OK", onPress: onDismiss }] : undefined,
+  );
+}
+
+type Errors = Partial<
+  Record<"fullName" | "phone" | "city" | "idNumber" | "confirmed", string>
+>;
 
 type FieldProps = {
   label: string;
@@ -24,8 +53,8 @@ type FieldProps = {
   placeholder?: string;
   error?: string;
   hint?: string;
-  keyboardType?: 'default' | 'phone-pad';
-  autoCapitalize?: 'none' | 'words' | 'characters';
+  keyboardType?: "default" | "phone-pad";
+  autoCapitalize?: "none" | "words" | "characters";
   icon: keyof typeof Ionicons.glyphMap;
   editable?: boolean;
 };
@@ -37,15 +66,21 @@ function Field({
   placeholder,
   error,
   hint,
-  keyboardType = 'default',
-  autoCapitalize = 'words',
+  keyboardType = "default",
+  autoCapitalize = "words",
   icon,
   editable = true,
 }: FieldProps) {
   return (
     <View style={acct.formGroup}>
       <Text style={acct.fieldLabel}>{label}</Text>
-      <View style={[acct.field, error ? acct.fieldError : null, !editable && { opacity: 0.7 }]}>
+      <View
+        style={[
+          acct.field,
+          error ? acct.fieldError : null,
+          !editable && { opacity: 0.7 },
+        ]}
+      >
         <Ionicons
           name={icon}
           size={17}
@@ -88,11 +123,11 @@ export default function LandlordVerificationScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
 
-  const [fullName, setFullName] = useState(session?.user?.fullName ?? '');
-  const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('');
-  const [address, setAddress] = useState('');
-  const [idNumber, setIdNumber] = useState('');
+  const [fullName, setFullName] = useState(session?.user?.fullName ?? "");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
+  const [idNumber, setIdNumber] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -107,12 +142,16 @@ export default function LandlordVerificationScreen() {
 
   const validate = (): Errors => {
     const next: Errors = {};
-    if (!fullName.trim()) next.fullName = 'Enter your full legal name.';
-    if (!phone.trim()) next.phone = 'Enter your phone number.';
-    else if (!PHONE_PATTERN.test(phone.trim())) next.phone = 'Enter a valid phone number.';
-    if (!city.trim()) next.city = 'Enter the city or municipality of your properties.';
-    if (!idNumber.trim()) next.idNumber = 'Enter the number shown on your valid ID.';
-    if (!confirmed) next.confirmed = 'Confirm that your information is correct.';
+    if (!fullName.trim()) next.fullName = "Enter your full legal name.";
+    if (!phone.trim()) next.phone = "Enter your phone number.";
+    else if (!PHONE_PATTERN.test(phone.trim()))
+      next.phone = "Enter a valid phone number.";
+    if (!city.trim())
+      next.city = "Enter the city or municipality of your properties.";
+    if (!idNumber.trim())
+      next.idNumber = "Enter the number shown on your valid ID.";
+    if (!confirmed)
+      next.confirmed = "Confirm that your information is correct.";
     return next;
   };
 
@@ -126,22 +165,25 @@ export default function LandlordVerificationScreen() {
     try {
       await submitLandlordVerification({
         fullName: fullName.trim(),
-        email: session?.user?.email ?? '',
+        email: session?.user?.email ?? "",
         phone: phone.trim(),
         city: city.trim(),
         address: address.trim(),
         idNumber: idNumber.trim(),
       });
-      // No backend yet — the demo stub always succeeds, so send the landlord
-      // straight to the dashboard. Swap in the Pending Verification screen
-      // (`routes.landlordVerificationPending`) once the backend is connected.
-      router.replace(routes.landlordDashboard);
+      notify(
+        "Submitted — demo",
+        `${VERIFICATION_SUCCESS_MESSAGE}\n\n${VERIFICATION_DEMO_NOTICE}`,
+        // TODO(verification): route to the Pending Verification screen
+        // (`routes.landlordVerificationPending`) once the backend is connected.
+        () => router.replace(routes.landlordDashboard),
+      );
     } catch (submitError) {
-      Alert.alert(
-        'Could not submit',
+      notify(
+        "Could not submit",
         submitError instanceof Error
           ? submitError.message
-          : 'Something went wrong while submitting. Please try again.'
+          : "Something went wrong while submitting. Please try again.",
       );
     } finally {
       setSubmitting(false);
@@ -154,7 +196,10 @@ export default function LandlordVerificationScreen() {
 
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 16 },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -171,20 +216,36 @@ export default function LandlordVerificationScreen() {
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <Ionicons name="arrow-back" size={20} color={LANDLORD_THEME.textPrimary} />
+              <Ionicons
+                name="arrow-back"
+                size={20}
+                color={LANDLORD_THEME.textPrimary}
+              />
             </Pressable>
             <View style={acct.headerTextCol}>
               <Text style={acct.headerTitle}>Landlord verification</Text>
               <Text style={acct.headerSubtitle}>
-                Confirm your details so the BoardPoint team can review your account.
+                Confirm your details so the BoardPoint team can review your
+                account.
               </Text>
             </View>
           </View>
 
           {/* Intro */}
           <View style={[acct.infoCard, { marginTop: 18 }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <Ionicons name="shield-checkmark-outline" size={17} color={LANDLORD_THEME.primaryDark} />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 6,
+              }}
+            >
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={17}
+                color={LANDLORD_THEME.primaryDark}
+              />
               <Text style={acct.infoCardTitle}>Why verify?</Text>
             </View>
             <Text style={acct.infoCardBody}>
@@ -200,7 +261,7 @@ export default function LandlordVerificationScreen() {
               value={fullName}
               onChangeText={(text) => {
                 setFullName(text);
-                clearError('fullName');
+                clearError("fullName");
               }}
               placeholder="e.g. Maria Santos"
               icon="person-outline"
@@ -208,8 +269,8 @@ export default function LandlordVerificationScreen() {
             />
             <Field
               label="Email address"
-              value={session?.user?.email ?? ''}
-              onChangeText={() => { }}
+              value={session?.user?.email ?? ""}
+              onChangeText={() => {}}
               icon="mail-outline"
               editable={false}
               hint="Your account email — update it from Edit Profile if needed."
@@ -219,7 +280,7 @@ export default function LandlordVerificationScreen() {
               value={phone}
               onChangeText={(text) => {
                 setPhone(text);
-                clearError('phone');
+                clearError("phone");
               }}
               placeholder="e.g. +63 917 123 4567"
               keyboardType="phone-pad"
@@ -231,7 +292,7 @@ export default function LandlordVerificationScreen() {
               value={city}
               onChangeText={(text) => {
                 setCity(text);
-                clearError('city');
+                clearError("city");
               }}
               placeholder="e.g. Dapitan City"
               icon="location-outline"
@@ -249,7 +310,7 @@ export default function LandlordVerificationScreen() {
               value={idNumber}
               onChangeText={(text) => {
                 setIdNumber(text);
-                clearError('idNumber');
+                clearError("idNumber");
               }}
               placeholder="e.g. P123456789012"
               autoCapitalize="characters"
@@ -262,17 +323,19 @@ export default function LandlordVerificationScreen() {
             <Pressable
               onPress={() => {
                 setConfirmed((prev) => !prev);
-                clearError('confirmed');
+                clearError("confirmed");
               }}
               style={({ pressed }) => [
                 {
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection: "row",
+                  alignItems: "center",
                   gap: 10,
                   backgroundColor: LANDLORD_THEME.surface,
                   borderRadius: 14,
                   borderWidth: 1,
-                  borderColor: errors.confirmed ? '#B0433A' : LANDLORD_THEME.border,
+                  borderColor: errors.confirmed
+                    ? "#B0433A"
+                    : LANDLORD_THEME.border,
                   padding: 14,
                   opacity: pressed ? 0.8 : 1,
                 },
@@ -287,17 +350,32 @@ export default function LandlordVerificationScreen() {
                   height: 22,
                   borderRadius: 7,
                   borderWidth: 1.5,
-                  borderColor: confirmed ? LANDLORD_THEME.primary : LANDLORD_THEME.border,
-                  backgroundColor: confirmed ? LANDLORD_THEME.primary : LANDLORD_THEME.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  borderColor: confirmed
+                    ? LANDLORD_THEME.primary
+                    : LANDLORD_THEME.border,
+                  backgroundColor: confirmed
+                    ? LANDLORD_THEME.primary
+                    : LANDLORD_THEME.surface,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 {confirmed ? (
-                  <Ionicons name="checkmark" size={15} color={LANDLORD_THEME.onPrimary} />
+                  <Ionicons
+                    name="checkmark"
+                    size={15}
+                    color={LANDLORD_THEME.onPrimary}
+                  />
                 ) : null}
               </View>
-              <Text style={{ flex: 1, fontSize: 13, lineHeight: 19, color: LANDLORD_THEME.textSecondary }}>
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  lineHeight: 19,
+                  color: LANDLORD_THEME.textSecondary,
+                }}
+              >
                 I confirm the information above is true and correct.
               </Text>
             </Pressable>
@@ -310,9 +388,21 @@ export default function LandlordVerificationScreen() {
 
           {/* Submit */}
           <View style={{ marginTop: 22, gap: 10 }}>
-            <SubmitButton onPress={() => void handleSubmit()} loading={submitting} />
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="information-circle-outline" size={14} color={LANDLORD_THEME.textMuted} />
+            <SubmitButton
+              onPress={() => void handleSubmit()}
+              loading={submitting}
+            />
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={14}
+                color={LANDLORD_THEME.textMuted}
+              />
+              <Text style={[acct.helperText, { flex: 1 }]}>
+                {VERIFICATION_DEMO_NOTICE}
+              </Text>
             </View>
           </View>
         </View>
