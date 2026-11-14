@@ -32,6 +32,8 @@ import { formatPeso } from '@/utils/currency';
 import { formatDisplayDate, formatShortDate, parseISODate, toISODate, MONTH_ABBRS } from '@/utils/date';
 import * as Crypto from 'expo-crypto';
 import { useMemo, useSyncExternalStore } from 'react';
+import { getAuthState } from '@/services/auth';
+import { assertLandlordWriteAccess } from '@/services/landlordVerification';
 
 const STORAGE_KEY = 'landlord.data';
 
@@ -861,6 +863,10 @@ function emit(): void {
 }
 
 function setState(next: LandlordData): void {
+  const session = getAuthState().session;
+  if (dataReady && session?.user.role === 'landlord') {
+    assertLandlordWriteAccess(session.user.id);
+  }
   state = next;
   emit();
 }

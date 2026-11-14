@@ -54,3 +54,21 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Supabase backend
+
+The app reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` from `.env`. Set the URL to the project root (for example, `https://<project-ref>.supabase.co`), not an API endpoint such as `/rest/v1/`. Apply the base BoardPoint schema before the migrations in `supabase/migrations`.
+
+The landlord verification migration creates a private `verification-files` bucket, restricts landlord write policies until an application is approved, and adds admin-only review functions. Landlords confirm their email before submitting the required ID-front, ID-back, selfie-with-ID, and proof-of-address images. Administrators review live submissions from Admin → Landlord verification; document access is audited and signed preview links expire after one minute. Apply the migration before testing this flow.
+
+Username login and username-based password recovery use the `username-auth` Edge Function. After linking the Supabase CLI to the project, apply the migration, set a random server-only rate-limit secret, and deploy the function:
+
+```bash
+supabase db push
+supabase secrets set USERNAME_LOGIN_RATE_LIMIT_SECRET="<random secret>"
+supabase functions deploy username-auth
+```
+
+Supabase provides the function's `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` values. Never add the service-role key to the app's `.env`.
+
+The function resolves usernames server-side, rate-limits attempts, and only returns an Auth session after the password is verified. It does not return the account email to the app.

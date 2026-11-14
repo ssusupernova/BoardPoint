@@ -17,3 +17,4 @@ export * from './reports';
 export * from './documents';
 export * from './settings';
 export * from './adminAccounts';
+export * from './verificationBackend';

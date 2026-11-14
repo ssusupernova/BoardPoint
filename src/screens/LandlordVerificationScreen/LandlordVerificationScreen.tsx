@@ -1,14 +1,16 @@
 import { SubmitButton } from "@/components/landlord/SubmitButton";
 import { routes } from "@/routes";
 import { useAuthSession } from "@/services/auth";
+import { useLandlordVerification } from "@/services/landlordVerification";
 import {
-  VERIFICATION_DEMO_NOTICE,
-  VERIFICATION_SUCCESS_MESSAGE,
   submitLandlordVerification,
-} from "@/services/verificationDemo";
+  type LandlordVerificationDocumentKind,
+  type SelectedVerificationDocument,
+} from "@/services/landlordVerification";
 import { accountStyles as acct } from "@/styles/landlord/account.styles";
 import { LANDLORD_THEME, styles } from "@/styles/landlord/styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
@@ -42,9 +44,45 @@ function notify(title: string, message: string, onDismiss?: () => void) {
   );
 }
 
-type Errors = Partial<
-  Record<"fullName" | "phone" | "city" | "idNumber" | "confirmed", string>
->;
+type Errors = Partial<Record<"fullName" | "phone" | "city" | "confirmed" | "documents", string>>;
+
+const DOCUMENT_FIELDS: {
+  kind: LandlordVerificationDocumentKind;
+  label: string;
+  description: string;
+  required: boolean;
+}[] = [
+  {
+    kind: "id_front",
+    label: "Government ID — front",
+    description: "A clear photo of the front of your valid ID.",
+    required: true,
+  },
+  {
+    kind: "id_back",
+    label: "Government ID — back",
+    description: "A clear photo of the back of your valid ID.",
+    required: true,
+  },
+  {
+    kind: "selfie",
+    label: "Selfie holding your ID",
+    description: "Make sure your face and ID are readable.",
+    required: true,
+  },
+  {
+    kind: "proof_of_address",
+    label: "Proof of address",
+    description: "A recent utility bill or other address document.",
+    required: true,
+  },
+  {
+    kind: "ownership_proof",
+    label: "Proof of property ownership",
+    description: "Optional supporting document.",
+    required: false,
+  },
+];
 
 type FieldProps = {
   label: string;
@@ -111,23 +149,21 @@ function Field({
 }
 
 /**
- * Landlord verification setup.
- *
- * Collects the identity details the admin team reviews, then hands off to
- * `submitLandlordVerification` — currently a frontend demo stub (see
- * `@/services/verificationDemo`). Swap that service for a real backend call
- * when Supabase integration lands; this screen's logic stays the same.
+ * Collects identity details and uploads them to the private verification bucket.
  */
 export default function LandlordVerificationScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuthSession();
+  const verification = useLandlordVerification(session?.user.id);
 
   const [fullName, setFullName] = useState(session?.user?.fullName ?? "");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
-  const [idNumber, setIdNumber] = useState("");
+  const [documents, setDocuments] = useState<
+    Partial<Record<LandlordVerificationDocumentKind, SelectedVerificationDocument>>
+  >({});
   const [confirmed, setConfirmed] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -148,8 +184,8 @@ export default function LandlordVerificationScreen() {
       next.phone = "Enter a valid phone number.";
     if (!city.trim())
       next.city = "Enter the city or municipality of your properties.";
-    if (!idNumber.trim())
-      next.idNumber = "Enter the number shown on your valid ID.";
+    if (DOCUMENT_FIELDS.some((field) => field.required && !documents[field.kind]))
+      next.documents = "Upload all required verification documents.";
     if (!confirmed)
       next.confirmed = "Confirm that your information is correct.";
     return next;
@@ -160,23 +196,25 @@ export default function LandlordVerificationScreen() {
     const nextErrors = validate();
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
+    if (!session?.user?.id) {
+      notify("Sign in required", "Sign in with your confirmed email before submitting verification.");
+      return;
+    }
 
     setSubmitting(true);
     try {
       await submitLandlordVerification({
         fullName: fullName.trim(),
-        email: session?.user?.email ?? "",
+        email: session.user.email,
         phone: phone.trim(),
         city: city.trim(),
         address: address.trim(),
-        idNumber: idNumber.trim(),
-      });
+        documents,
+      }, session.user.id);
       notify(
-        "Submitted — demo",
-        `${VERIFICATION_SUCCESS_MESSAGE}\n\n${VERIFICATION_DEMO_NOTICE}`,
-        // TODO(verification): route to the Pending Verification screen
-        // (`routes.landlordVerificationPending`) once the backend is connected.
-        () => router.replace(routes.landlordDashboard),
+        "Application submitted",
+        "Your documents were sent securely for admin review. Your landlord account will remain in view-only mode until it is approved.",
+        () => router.replace(routes.landlordVerificationPending),
       );
     } catch (submitError) {
       notify(
@@ -187,6 +225,47 @@ export default function LandlordVerificationScreen() {
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const pickDocument = async (field: (typeof DOCUMENT_FIELDS)[number]) => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        notify("Photo access needed", "Allow photo access to upload your verification documents.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        quality: 0.7,
+        selectionLimit: 1,
+        base64: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset?.uri) {
+        notify("Could not select file", "Choose an image and try again.");
+        return;
+      }
+      if (!asset.base64) {
+        notify("Could not read file", "The selected image could not be prepared for secure upload.");
+        return;
+      }
+      setDocuments((previous) => ({
+        ...previous,
+        [field.kind]: {
+          base64: asset.base64,
+          name: asset.fileName ?? field.label,
+          mimeType: "image/jpeg",
+        },
+      }));
+      clearError("documents");
+    } catch (pickerError) {
+      notify(
+        "Could not select file",
+        pickerError instanceof Error ? pickerError.message : "Choose the image and try again.",
+      );
     }
   };
 
@@ -248,6 +327,14 @@ export default function LandlordVerificationScreen() {
               />
               <Text style={acct.infoCardTitle}>Why verify?</Text>
             </View>
+            {verification.status === "more_information_requested" && verification.reviewerNotes ? (
+              <View style={[acct.infoCard, { marginTop: 12, borderColor: LANDLORD_THEME.primary }]}>
+                <Text style={acct.infoCardTitle}>Update requested by the admin team</Text>
+                <Text style={[acct.infoCardBody, { marginTop: 6 }]}>
+                  {verification.reviewerNotes}
+                </Text>
+              </View>
+            ) : null}
             <Text style={acct.infoCardBody}>
               Verified landlords earn a badge renters can trust. The admin team
               reviews your details — you can’t verify your own account.
@@ -305,19 +392,55 @@ export default function LandlordVerificationScreen() {
               placeholder="Street, barangay (optional)"
               icon="home-outline"
             />
-            <Field
-              label="Valid ID number"
-              value={idNumber}
-              onChangeText={(text) => {
-                setIdNumber(text);
-                clearError("idNumber");
-              }}
-              placeholder="e.g. P123456789012"
-              autoCapitalize="characters"
-              icon="card-outline"
-              error={errors.idNumber}
-              hint="Enter the number printed on your government-issued ID."
-            />
+            <View style={{ gap: 10 }}>
+              <Text style={acct.fieldLabel}>Verification documents</Text>
+              <Text style={acct.helperText}>
+                Upload clear image photos. Each file must be 8 MB or smaller.
+              </Text>
+              {DOCUMENT_FIELDS.map((field) => {
+                const selected = documents[field.kind];
+                return (
+                  <Pressable
+                    key={field.kind}
+                    onPress={() => void pickDocument(field)}
+                    disabled={submitting}
+                    style={({ pressed }) => ({
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: errors.documents ? "#B0433A" : LANDLORD_THEME.border,
+                      backgroundColor: LANDLORD_THEME.surface,
+                      padding: 14,
+                      opacity: pressed ? 0.78 : 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 12,
+                    })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Upload ${field.label}`}
+                  >
+                    <Ionicons
+                      name={selected ? "checkmark-circle" : "cloud-upload-outline"}
+                      size={22}
+                      color={selected ? LANDLORD_THEME.primaryDark : LANDLORD_THEME.textMuted}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={acct.fieldLabel}>
+                        {field.label}{field.required ? " *" : " (optional)"}
+                      </Text>
+                      <Text style={acct.helperText} numberOfLines={2}>
+                        {selected?.name ?? field.description}
+                      </Text>
+                    </View>
+                    <Text style={acct.helperText}>{selected ? "Change" : "Add"}</Text>
+                  </Pressable>
+                );
+              })}
+              {errors.documents ? (
+                <Text style={acct.errorText} accessibilityRole="alert">
+                  {errors.documents}
+                </Text>
+              ) : null}
+            </View>
 
             {/* Confirmation checkbox */}
             <Pressable
@@ -376,7 +499,7 @@ export default function LandlordVerificationScreen() {
                   color: LANDLORD_THEME.textSecondary,
                 }}
               >
-                I confirm the information above is true and correct.
+                I confirm the information and documents above are true and correct.
               </Text>
             </Pressable>
             {errors.confirmed ? (
@@ -401,7 +524,7 @@ export default function LandlordVerificationScreen() {
                 color={LANDLORD_THEME.textMuted}
               />
               <Text style={[acct.helperText, { flex: 1 }]}>
-                {VERIFICATION_DEMO_NOTICE}
+                Documents are private and can only be accessed by you and authorized administrators.
               </Text>
             </View>
           </View>

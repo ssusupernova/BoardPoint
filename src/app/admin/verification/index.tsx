@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -23,6 +23,9 @@ import {
   matchesQuery,
   retryAdminStore,
   useAdminStore,
+  listLiveVerificationApplications,
+  subscribeToLiveVerificationUpdates,
+  type LiveVerificationApplication,
   type DateRange,
 } from '@/services/admin';
 import { adminColors, adminRadii, adminType } from '@/theme/admin';
@@ -77,6 +80,31 @@ export default function VerificationQueueScreen() {
   const [query, setQuery] = useState('');
   const [range, setRange] = useState<DateRange>('all');
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [liveApplications, setLiveApplications] = useState<LiveVerificationApplication[]>([]);
+  const [liveLoading, setLiveLoading] = useState(true);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  const refreshLiveApplications = useCallback(async () => {
+    setLiveLoading(true);
+    setLiveError(null);
+    try {
+      setLiveApplications(await listLiveVerificationApplications());
+    } catch (loadError) {
+      setLiveError(loadError instanceof Error ? loadError.message : 'Could not load live applications.');
+    } finally {
+      setLiveLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => void refreshLiveApplications(), 0);
+    return () => clearTimeout(timer);
+  }, [refreshLiveApplications]);
+
+  useEffect(
+    () => subscribeToLiveVerificationUpdates(() => void refreshLiveApplications()),
+    [refreshLiveApplications],
+  );
 
   const rows = useMemo(() => {
     if (!db) return [];
@@ -138,6 +166,50 @@ export default function VerificationQueueScreen() {
           information requests are confirmed, stored and audited.
         </Text>
       </View>
+
+      <SectionCard title="Live applications" padded>
+        <Text style={styles.liveIntro}>
+          Applications and private documents submitted through the landlord app.
+        </Text>
+        {liveLoading ? (
+          <Text style={styles.liveMessage}>Loading live applications…</Text>
+        ) : liveError ? (
+          <View>
+            <Text style={styles.liveError}>{liveError}</Text>
+            <Pressable onPress={() => void refreshLiveApplications()} style={styles.liveRefresh}>
+              <Text style={styles.liveRefreshText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : liveApplications.length === 0 ? (
+          <Text style={styles.liveMessage}>There are no live applications awaiting review.</Text>
+        ) : (
+          liveApplications.map((application) => (
+            <Pressable
+              key={application.id}
+              onPress={() => router.push(href(routes.adminVerificationReview(application.id)))}
+              style={({ pressed }) => [styles.liveRow, pressed && styles.liveRowPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`Review ${application.full_name}'s live verification application`}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.liveName}>{application.full_name}</Text>
+                <Text style={styles.liveMeta}>
+                  {application.email} · {application.documents.length} documents
+                </Text>
+              </View>
+              <StatusPill label={application.status.replace(/_/g, ' ')} tone={statusTone(
+                application.status === 'more_information_requested' ? 'info_requested' : 'pending'
+              )} />
+              <Ionicons name="chevron-forward" size={16} color={adminColors.primary} />
+            </Pressable>
+          ))
+        )}
+        {!liveLoading && !liveError ? (
+          <Pressable onPress={() => void refreshLiveApplications()} style={styles.liveRefresh}>
+            <Text style={styles.liveRefreshText}>Refresh live applications</Text>
+          </Pressable>
+        ) : null}
+      </SectionCard>
 
       <SearchField
         value={query}
@@ -293,6 +365,52 @@ const styles = StyleSheet.create({
     fontSize: adminType.small,
     color: adminColors.textSecondary,
     lineHeight: 18,
+  },
+  liveIntro: {
+    color: adminColors.textSecondary,
+    fontSize: adminType.small,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  liveMessage: {
+    color: adminColors.textMuted,
+    fontSize: adminType.small,
+    paddingVertical: 8,
+  },
+  liveError: {
+    color: adminColors.danger,
+    fontSize: adminType.small,
+    paddingVertical: 8,
+  },
+  liveRefresh: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+  },
+  liveRefreshText: {
+    color: adminColors.primary,
+    fontSize: adminType.small,
+    fontWeight: '700',
+  },
+  liveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: adminColors.border,
+  },
+  liveRowPressed: {
+    opacity: 0.72,
+  },
+  liveName: {
+    color: adminColors.textPrimary,
+    fontSize: adminType.body,
+    fontWeight: '700',
+  },
+  liveMeta: {
+    color: adminColors.textSecondary,
+    fontSize: adminType.tiny,
+    marginTop: 3,
   },
   resultCount: {
     fontSize: adminType.tiny,

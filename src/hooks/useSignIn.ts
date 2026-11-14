@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
-import { authService } from '@/services/auth';
+import { authService, useAuthSession } from '@/services/auth';
 import { loadChecklist } from '@/services/checklist';
 import { dashboardForRole, routes } from '@/routes';
 import { toErrorMessage } from '@/utils/errors';
 import type { UserRole } from '@/services/auth';
+import { getLandlordVerification } from '@/services/landlordVerification';
 
 /** Where a signed-in role lands after auth. */
 export function homeForRole(role: UserRole) {
@@ -16,6 +17,7 @@ export function homeForRole(role: UserRole) {
 
 /** Sign-in form state and side effects, kept out of the LoginScreen view. */
 export function useSignIn() {
+  const { error: authError } = useAuthSession();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -46,8 +48,18 @@ export function useSignIn() {
         // on the dashboard; returning renters go straight home.
         const checklist = await loadChecklist(session.user.id);
         router.replace(checklist ? routes.renterDashboard : routes.preferences);
-      } else {
-        router.replace(dashboardForRole(session.user.role));
+        return;
+      }
+      if (session.user.role === 'landlord') {
+        const verification = await getLandlordVerification(session.user.id);
+        if (verification.status === 'approved') {
+          router.replace(routes.landlordDashboard);
+        } else if (verification.status === 'pending' || verification.status === 'under_review') {
+          router.replace(routes.landlordVerificationPending);
+        } else {
+          router.replace(routes.landlordVerification);
+        }
+        return;
       }
       router.replace(homeForRole(session.user.role));
     } catch (err) {
@@ -117,7 +129,7 @@ export function useSignIn() {
     toggleRememberMe,
     submitting,
     googleLoading,
-    errorMessage,
+    errorMessage: errorMessage ?? authError,
     canSubmit,
     handleLogin,
     handleGoogleLogin,

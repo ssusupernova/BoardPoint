@@ -8,7 +8,7 @@
  */
 
 import { GeoPoint } from '@/services/geocode';
-import { storageGet, storageSet } from '@/services/storage';
+import { supabase } from '@/backend/config/supabase';
 import { parseISODate, toISODate } from '@/utils/date';
 
 export type RoomType = 'private' | 'shared';
@@ -213,15 +213,63 @@ export function toForm(checklist: RenterChecklist): ChecklistForm {
 /* ---------------------------------------------------------------- persistence */
 
 export async function loadChecklist(userId: string): Promise<RenterChecklist | null> {
-  const raw = await storageGet(`checklist.${userId}`);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as RenterChecklist;
-  } catch {
-    return null;
+  const { data, error } = await supabase
+    .from('renter_preferences')
+    .select(
+      'origin_label, origin_latitude, origin_longitude, search_radius_km, min_monthly_rent, max_monthly_rent, preferred_room_type, occupants, move_in_date, must_have, nice_to_have, preferred_rules',
+    )
+    .eq('renter_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const radiusKm = Number(data.search_radius_km);
+  const occupants = Number(data.occupants);
+  const roomType = data.preferred_room_type;
+  if (
+    ![1, 2, 3, 5, 10].includes(radiusKm)
+    || ![1, 2, 3, 4].includes(occupants)
+    || (roomType !== 'private_room' && roomType !== 'shared_room')
+    || typeof data.move_in_date !== 'string'
+  ) {
+    throw new Error('The saved preferences have an unsupported value. Please review them.');
   }
+
+  const hasCoordinates =
+    typeof data.origin_latitude === 'number' && typeof data.origin_longitude === 'number';
+  return {
+    originLabel: data.origin_label ?? '',
+    originPoint: hasCoordinates
+      ? { latitude: data.origin_latitude, longitude: data.origin_longitude }
+      : null,
+    radiusKm: radiusKm as RadiusKm,
+    minRent: Number(data.min_monthly_rent),
+    maxRent: Number(data.max_monthly_rent),
+    roomType: roomType === 'private_room' ? 'private' : 'shared',
+    occupants: occupants as Occupants,
+    moveInDate: data.move_in_date,
+    mustHave: data.must_have ?? [],
+    nice: data.nice_to_have ?? [],
+    rules: data.preferred_rules ?? [],
+  };
 }
 
 export async function saveChecklist(userId: string, checklist: RenterChecklist): Promise<void> {
-  await storageSet(`checklist.${userId}`, JSON.stringify(checklist));
+  const { error } = await supabase.from('renter_preferences').upsert({
+    renter_id: userId,
+    origin_label: checklist.originLabel,
+    origin_latitude: checklist.originPoint?.latitude ?? null,
+    origin_longitude: checklist.originPoint?.longitude ?? null,
+    search_radius_km: checklist.radiusKm,
+    min_monthly_rent: checklist.minRent,
+    max_monthly_rent: checklist.maxRent,
+    preferred_room_type: checklist.roomType === 'private' ? 'private_room' : 'shared_room',
+    occupants: checklist.occupants,
+    move_in_date: checklist.moveInDate,
+    must_have: checklist.mustHave,
+    nice_to_have: checklist.nice,
+    preferred_rules: checklist.rules,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'renter_id' });
+  if (error) throw error;
 }

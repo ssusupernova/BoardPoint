@@ -16,6 +16,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
 import { useAuthSession } from '@/services/auth';
+import { useLandlordVerification } from '@/services/landlordVerification';
 import {
   addRoom,
   canViewProperty,
@@ -136,6 +137,7 @@ export default function AddPropertyScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
   const landlordId = session?.user?.id;
+  const verification = useLandlordVerification(landlordId);
   const params = useLocalSearchParams<{ propertyId?: string }>();
   const propertyId = Array.isArray(params.propertyId)
     ? params.propertyId[0]
@@ -380,6 +382,60 @@ export default function AddPropertyScreen() {
   const showPublishButton = !isEditing || property?.listingStatus === 'Draft';
   const showSaveDraft = !isEditing || property?.listingStatus === 'Draft';
   const showSaveChanges = isEditing && !showPublishButton;
+
+  if (verification.loading) {
+    return (
+      <View style={styles.root}>
+        <StatusBar style="dark" />
+        <View style={st.centered}>
+          <Text style={st.centeredTitle}>Checking verification status…</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (verification.error) {
+    return (
+      <View style={styles.root}>
+        <StatusBar style="dark" />
+        <View style={st.centered}>
+          <Ionicons name="alert-circle-outline" size={28} color={LANDLORD_THEME.primaryDark} />
+          <Text style={st.centeredTitle}>Could not check verification</Text>
+          <Text style={st.centeredBody}>{verification.error}</Text>
+          <Pressable
+            onPress={() => void verification.refresh()}
+            style={({ pressed }) => [form.primaryButton, pressed && form.primaryButtonPressed]}
+            accessibilityRole="button"
+          >
+            <Text style={form.primaryButtonText}>Try again</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (verification.status !== 'approved') {
+    return (
+      <View style={styles.root}>
+        <StatusBar style="dark" />
+        <View style={st.centered}>
+          <Ionicons name="lock-closed-outline" size={28} color={LANDLORD_THEME.primaryDark} />
+          <Text style={st.centeredTitle}>Property changes are locked</Text>
+          <Text style={st.centeredBody}>
+            Your account is in view-only mode until an administrator approves your landlord
+            verification.
+          </Text>
+          <Pressable
+            onPress={() => router.replace(routes.landlordVerificationPending)}
+            style={({ pressed }) => [form.primaryButton, pressed && form.primaryButtonPressed]}
+            accessibilityRole="button"
+          >
+            <Text style={form.primaryButtonText}>View verification status</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (property && !isAuthorized) {
     return (

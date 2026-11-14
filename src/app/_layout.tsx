@@ -53,6 +53,7 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/choose-role" />
         <Stack.Screen name="(auth)/sign-up" />
+        <Stack.Screen name="(auth)/landlord-verification-start" />
       </Stack.Protected>
 
       <Stack.Protected guard={!!session && role === 'renter'}>

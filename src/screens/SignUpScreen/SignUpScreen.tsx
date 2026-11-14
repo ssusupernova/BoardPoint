@@ -25,6 +25,8 @@ export default function SignUpScreen() {
   const {
     fullName,
     setFullName,
+    username,
+    setUsername,
     email,
     setEmail,
     password,
@@ -34,7 +36,6 @@ export default function SignUpScreen() {
     submitting,
     googleLoading,
     errorMessage,
-    canSubmit,
     handleCreateAccount,
     handleGoogleSignUp,
   } = useSignUp(role);
@@ -118,6 +119,17 @@ export default function SignUpScreen() {
               />
 
               <LoginInput
+                label="Username"
+                placeholder="Choose a username"
+                icon="at-outline"
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoComplete="username"
+                returnKeyType="next"
+              />
+
+              <LoginInput
                 label="Email address"
                 placeholder="Enter your email address"
                 value={email}
@@ -125,6 +137,7 @@ export default function SignUpScreen() {
                 keyboardType="email-address"
                 textContentType="emailAddress"
                 autoComplete="email"
+                autoCapitalize="none"
                 returnKeyType="next"
               />
 
@@ -158,7 +171,7 @@ export default function SignUpScreen() {
                 accessibilityLabel="Register your BoardPoint account"
                 onPress={() => void handleCreateAccount()}
                 loading={submitting}
-                disabled={googleLoading || !canSubmit}
+                disabled={googleLoading || submitting}
               />
               <SocialDivider />
               <GoogleLoginButton
