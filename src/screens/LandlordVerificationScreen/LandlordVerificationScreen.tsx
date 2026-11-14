@@ -1,19 +1,17 @@
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SubmitButton } from '@/components/landlord/SubmitButton';
+import { routes } from '@/routes';
 import { useAuthSession } from '@/services/auth';
 import {
-  VERIFICATION_DEMO_NOTICE,
-  VERIFICATION_SUCCESS_MESSAGE,
   submitLandlordVerification,
 } from '@/services/verificationDemo';
-import { routes } from '@/routes';
 import { accountStyles as acct } from '@/styles/landlord/account.styles';
 import { LANDLORD_THEME, styles } from '@/styles/landlord/styles';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PHONE_PATTERN = /^[+()\d\s-]{7,}$/;
 
@@ -134,18 +132,10 @@ export default function LandlordVerificationScreen() {
         address: address.trim(),
         idNumber: idNumber.trim(),
       });
-      Alert.alert(
-        'Submitted — demo',
-        `${VERIFICATION_SUCCESS_MESSAGE}\n\n${VERIFICATION_DEMO_NOTICE}`,
-        [
-          {
-            text: 'OK',
-            // TODO(verification): route to the Pending Verification screen
-            // (`routes.landlordVerificationPending`) once the backend is connected.
-            onPress: () => router.replace(routes.landlordDashboard),
-          },
-        ]
-      );
+      // No backend yet — the demo stub always succeeds, so send the landlord
+      // straight to the dashboard. Swap in the Pending Verification screen
+      // (`routes.landlordVerificationPending`) once the backend is connected.
+      router.replace(routes.landlordDashboard);
     } catch (submitError) {
       Alert.alert(
         'Could not submit',
@@ -219,7 +209,7 @@ export default function LandlordVerificationScreen() {
             <Field
               label="Email address"
               value={session?.user?.email ?? ''}
-              onChangeText={() => {}}
+              onChangeText={() => { }}
               icon="mail-outline"
               editable={false}
               hint="Your account email — update it from Edit Profile if needed."
@@ -323,9 +313,6 @@ export default function LandlordVerificationScreen() {
             <SubmitButton onPress={() => void handleSubmit()} loading={submitting} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="information-circle-outline" size={14} color={LANDLORD_THEME.textMuted} />
-              <Text style={[acct.helperText, { flex: 1 }]}>
-                {VERIFICATION_DEMO_NOTICE}
-              </Text>
             </View>
           </View>
         </View>

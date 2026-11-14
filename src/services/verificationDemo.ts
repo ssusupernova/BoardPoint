@@ -18,12 +18,6 @@ export interface LandlordVerificationPayload {
   idNumber: string;
 }
 
-export const VERIFICATION_DEMO_NOTICE =
-  'This is a temporary frontend demonstration — your application was not sent to a server, and no administrator has received it yet.';
-
-export const VERIFICATION_SUCCESS_MESSAGE =
-  'Your landlord verification application has been submitted successfully. Our admin team will review your information.';
-
 /** Simulates submitting the application; resolves when the "round trip" ends. */
 export async function submitLandlordVerification(
   _payload: LandlordVerificationPayload

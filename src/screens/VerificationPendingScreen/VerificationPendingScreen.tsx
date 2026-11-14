@@ -1,12 +1,11 @@
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { VERIFICATION_DEMO_NOTICE } from '@/services/verificationDemo';
 import { routes } from '@/routes';
-import { LANDLORD_THEME, styles } from '@/styles/landlord/styles';
 import { accountStyles as acct } from '@/styles/landlord/account.styles';
+import { LANDLORD_THEME, styles } from '@/styles/landlord/styles';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
  * Shown after the (demo) verification submission. The status pill says
@@ -90,10 +89,6 @@ export default function VerificationPendingScreen() {
             <Text style={acct.infoCardBody}>
               Your landlord verification application is showing as pending
               review.{' '}
-              {VERIFICATION_DEMO_NOTICE} Actual verification will be connected
-              once the BoardPoint backend is in place — at that point the admin
-              team will review submissions and update your status from their
-              panel.
             </Text>
           </View>
 
