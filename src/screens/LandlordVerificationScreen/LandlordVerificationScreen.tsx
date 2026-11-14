@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,23 @@ import { accountStyles as acct } from '@/styles/landlord/account.styles';
 import { LANDLORD_THEME, styles } from '@/styles/landlord/styles';
 
 const PHONE_PATTERN = /^[+()\d\s-]{7,}$/;
+
+/**
+ * `Alert.alert` is a no-op on react-native-web, so on web we fall back to the
+ * browser dialog (with an optional callback fired after the user dismisses it).
+ */
+function notify(title: string, message: string, onDismiss?: () => void) {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n\n${message}`);
+    onDismiss?.();
+    return;
+  }
+  Alert.alert(
+    title,
+    message,
+    onDismiss ? [{ text: 'OK', onPress: onDismiss }] : undefined
+  );
+}
 
 type Errors = Partial<Record<'fullName' | 'phone' | 'city' | 'idNumber' | 'confirmed', string>>;
 
@@ -134,20 +151,15 @@ export default function LandlordVerificationScreen() {
         address: address.trim(),
         idNumber: idNumber.trim(),
       });
-      Alert.alert(
+      notify(
         'Submitted — demo',
         `${VERIFICATION_SUCCESS_MESSAGE}\n\n${VERIFICATION_DEMO_NOTICE}`,
-        [
-          {
-            text: 'OK',
-            // TODO(verification): route to the Pending Verification screen
-            // (`routes.landlordVerificationPending`) once the backend is connected.
-            onPress: () => router.replace(routes.landlordDashboard),
-          },
-        ]
+        // TODO(verification): route to the Pending Verification screen
+        // (`routes.landlordVerificationPending`) once the backend is connected.
+        () => router.replace(routes.landlordDashboard)
       );
     } catch (submitError) {
-      Alert.alert(
+      notify(
         'Could not submit',
         submitError instanceof Error
           ? submitError.message

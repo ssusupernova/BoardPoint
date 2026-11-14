@@ -69,7 +69,23 @@ export const dashboardStyles = StyleSheet.create({
   greetingBlock: {
     marginBottom: 18,
   },
+  eyebrow: {
+    marginTop: 18,
+    fontSize: 12,
+    fontWeight: '700',
+    color: LANDLORD_THEME.textSecondary,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
+  date: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '600',
+    color: LANDLORD_THEME.textSecondary,
+    letterSpacing: 0.6,
+  },
   greetingTitle: {
+    marginTop: 6,
     fontSize: 24,
     fontWeight: '800',
     color: LANDLORD_THEME.textPrimary,

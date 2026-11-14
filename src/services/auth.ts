@@ -13,11 +13,11 @@
  *      `AuthSession`.
  */
 
-import { useSyncExternalStore } from 'react';
-import * as Crypto from 'expo-crypto';
-import { storageGet, storageSet } from '@/services/storage';
-import { ADMIN_SEED_ACCOUNTS } from './admin/adminAccounts';
-import type { AdminRole } from './admin/types';
+import { storageGet, storageSet } from "@/services/storage";
+import * as Crypto from "expo-crypto";
+import { useSyncExternalStore } from "react";
+import { ADMIN_SEED_ACCOUNTS } from "./admin/adminAccounts";
+import type { AdminRole } from "./admin/types";
 
 /**
  * Roles carried by a session.
@@ -26,14 +26,14 @@ import type { AdminRole } from './admin/types';
  * chosen role (it lands on the workspace home), and `super_admin` gates the
  * `/admin` routes.
  */
-export type UserRole = 'user' | 'renter' | 'landlord' | AdminRole;
+export type UserRole = "user" | "renter" | "landlord" | AdminRole;
 
 export class AuthNotConfiguredError extends Error {
   constructor(feature: string) {
     super(
-      `${feature} isn't connected yet. BoardPoint auth gets wired up here once the backend is configured.`
+      `${feature} isn't connected yet. BoardPoint auth gets wired up here once the backend is configured.`,
     );
-    this.name = 'AuthNotConfiguredError';
+    this.name = "AuthNotConfiguredError";
   }
 }
 
@@ -60,7 +60,7 @@ export interface SignUpCredentials {
   /** Email address used to create the account. */
   email: string;
   password: string;
-  role?: 'renter' | 'landlord';
+  role?: "renter" | "landlord";
   /**
    * When false, the account is created but no session is established, so the
    * caller can send the user to the sign-in screen instead. Defaults to true.
@@ -108,14 +108,14 @@ interface StoredAccount {
   role: UserRole;
 }
 
-type AccountIndexEntry = Pick<StoredAccount, 'id' | 'email' | 'username'>;
+type AccountIndexEntry = Pick<StoredAccount, "id" | "email" | "username">;
 
 /* ---------------------------------------------------------------- storage */
 
 async function hashPassword(password: string, salt: string): Promise<string> {
   return Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
-    `${salt}:${password}`
+    `${salt}:${password}`,
   );
 }
 
@@ -130,7 +130,7 @@ async function readAccount(id: string): Promise<StoredAccount | null> {
 }
 
 async function loadAccounts(): Promise<StoredAccount[]> {
-  const raw = await storageGet('accounts.index');
+  const raw = await storageGet("accounts.index");
   if (!raw) return [];
   let index: AccountIndexEntry[];
   try {
@@ -138,14 +138,18 @@ async function loadAccounts(): Promise<StoredAccount[]> {
   } catch {
     return [];
   }
-  const accounts = await Promise.all(index.map((entry) => readAccount(entry.id)));
-  return accounts.filter((account): account is StoredAccount => account !== null);
+  const accounts = await Promise.all(
+    index.map((entry) => readAccount(entry.id)),
+  );
+  return accounts.filter(
+    (account): account is StoredAccount => account !== null,
+  );
 }
 
 async function saveAccount(account: StoredAccount): Promise<void> {
   await storageSet(`account.${account.id}`, JSON.stringify(account));
 
-  const raw = await storageGet('accounts.index');
+  const raw = await storageGet("accounts.index");
   let index: AccountIndexEntry[] = [];
   if (raw) {
     try {
@@ -166,7 +170,7 @@ async function saveAccount(account: StoredAccount): Promise<void> {
   } else {
     index.push(entry);
   }
-  await storageSet('accounts.index', JSON.stringify(index));
+  await storageSet("accounts.index", JSON.stringify(index));
 }
 
 /**
@@ -181,15 +185,15 @@ async function seedAdminAccounts(): Promise<void> {
   const seededIds = new Set(ADMIN_SEED_ACCOUNTS.map((admin) => admin.id));
 
   for (const stale of existing) {
-    if (!stale.id.startsWith('adm-') || seededIds.has(stale.id)) continue;
+    if (!stale.id.startsWith("adm-") || seededIds.has(stale.id)) continue;
     await storageSet(`account.${stale.id}`, null);
-    const raw = await storageGet('accounts.index');
+    const raw = await storageGet("accounts.index");
     if (!raw) continue;
     try {
       const index = (JSON.parse(raw) as AccountIndexEntry[]).filter(
-        (entry) => entry.id !== stale.id
+        (entry) => entry.id !== stale.id,
       );
-      await storageSet('accounts.index', JSON.stringify(index));
+      await storageSet("accounts.index", JSON.stringify(index));
     } catch {
       // A corrupt index is rebuilt by the next saveAccount call.
     }
@@ -245,7 +249,7 @@ function toSession(account: StoredAccount): AuthSession {
       fullName: account.fullName,
       email: account.email,
       username: account.username,
-      role: account.role ?? 'renter',
+      role: account.role ?? "renter",
     },
   };
 }
@@ -253,12 +257,12 @@ function toSession(account: StoredAccount): AuthSession {
 async function restoreSession(): Promise<void> {
   let session: AuthSession | null = null;
   try {
-    const raw = await storageGet('session');
+    const raw = await storageGet("session");
     if (raw) {
       const parsed = JSON.parse(raw) as AuthSession;
       session = {
         ...parsed,
-        user: { ...parsed.user, role: parsed.user.role ?? 'renter' },
+        user: { ...parsed.user, role: parsed.user.role ?? "renter" },
       };
     }
   } catch {
@@ -275,7 +279,7 @@ void restoreSession();
 async function requireCurrentAccount(): Promise<StoredAccount> {
   const session = authState.session;
   if (!session) {
-    throw new Error('You are signed out. Please sign in again to continue.');
+    throw new Error("You are signed out. Please sign in again to continue.");
   }
   const account = await readAccount(session.user.id);
   if (!account) {
@@ -289,12 +293,14 @@ async function requireCurrentAccount(): Promise<StoredAccount> {
  * persisted session exists (the user chose "Remember me"), the stored copy is
  * refreshed too so the new details survive an app restart.
  */
-async function applyAccountUpdate(account: StoredAccount): Promise<AuthSession> {
+async function applyAccountUpdate(
+  account: StoredAccount,
+): Promise<AuthSession> {
   await saveAccount(account);
   const session = toSession(account);
-  const persisted = await storageGet('session');
+  const persisted = await storageGet("session");
   if (persisted) {
-    await storageSet('session', JSON.stringify(session));
+    await storageSet("session", JSON.stringify(session));
   }
   setAuthState({ session, hydrated: true });
   return session;
@@ -305,51 +311,60 @@ async function applyAccountUpdate(account: StoredAccount): Promise<AuthSession> 
 export const authService: AuthService = {
   async signIn({ identifier, password, rememberMe }) {
     const id = identifier.trim().toLowerCase();
-    if (!id) throw new Error('Please enter your email or username.');
-    if (!password) throw new Error('Please enter your password.');
+    if (!id) throw new Error("Please enter your email or username.");
+    if (!password) throw new Error("Please enter your password.");
 
     const accounts = await loadAccounts();
-    const emailHits = accounts.filter((account) => account.email.toLowerCase() === id);
-    const usernameHits = accounts.filter((account) => account.username.toLowerCase() === id);
+    const emailHits = accounts.filter(
+      (account) => account.email.toLowerCase() === id,
+    );
+    const usernameHits = accounts.filter(
+      (account) => account.username.toLowerCase() === id,
+    );
     const hits = emailHits.length > 0 ? emailHits : usernameHits;
 
     if (hits.length === 0) {
-      throw new Error("We couldn't find an account for that email or username.");
+      throw new Error(
+        "We couldn't find an account for that email or username.",
+      );
     }
     if (hits.length > 1) {
       throw new Error(
-        'More than one account uses that username. Sign in with your email address instead.'
+        "More than one account uses that username. Sign in with your email address instead.",
       );
     }
 
     const account = hits[0];
     const passwordHash = await hashPassword(password, account.salt);
     if (passwordHash !== account.passwordHash) {
-      throw new Error('That password is incorrect. Please try again.');
+      throw new Error("That password is incorrect. Please try again.");
     }
 
     const session = toSession(account);
-    await storageSet('session', rememberMe ? JSON.stringify(session) : null);
+    await storageSet("session", rememberMe ? JSON.stringify(session) : null);
     setAuthState({ session, hydrated: true });
     return session;
   },
 
   async signInWithGoogle() {
-    throw new AuthNotConfiguredError('Google sign-in');
+    throw new AuthNotConfiguredError("Google sign-in");
   },
 
   async signUp({ fullName, email, password, role, establishSession = true }) {
     const name = fullName.trim();
     const mail = email.trim().toLowerCase();
-    if (!name) throw new Error('Please enter your full name.');
-    if (!EMAIL_PATTERN.test(mail)) throw new Error('Please enter a valid email address.');
+    if (!name) throw new Error("Please enter your full name.");
+    if (!EMAIL_PATTERN.test(mail))
+      throw new Error("Please enter a valid email address.");
     if (password.length < 8) {
-      throw new Error('Your password must be at least 8 characters long.');
+      throw new Error("Your password must be at least 8 characters long.");
     }
 
     const accounts = await loadAccounts();
     if (accounts.some((account) => account.email.toLowerCase() === mail)) {
-      throw new Error('An account with that email already exists. Try logging in instead.');
+      throw new Error(
+        "An account with that email already exists. Try logging in instead.",
+      );
     }
 
     const salt = Crypto.randomUUID();
@@ -357,51 +372,52 @@ export const authService: AuthService = {
       id: Crypto.randomUUID(),
       fullName: name,
       email: mail,
-      username: mail.split('@')[0],
+      username: mail.split("@")[0],
       salt,
       passwordHash: await hashPassword(password, salt),
       createdAt: new Date().toISOString(),
-      role: role ?? 'renter',
+      role: role ?? "renter",
     };
     await saveAccount(account);
 
     const session = toSession(account);
     if (establishSession) {
-      await storageSet('session', JSON.stringify(session));
+      await storageSet("session", JSON.stringify(session));
       setAuthState({ session, hydrated: true });
     }
     return session;
   },
 
   async signOut() {
-    await storageSet('session', null);
+    await storageSet("session", null);
     setAuthState({ session: null, hydrated: true });
   },
 
   async resetPassword() {
-    throw new AuthNotConfiguredError('Password recovery');
+    throw new AuthNotConfiguredError("Password recovery");
   },
 
   async updateProfile({ fullName }) {
     const account = await requireCurrentAccount();
     const name = (fullName ?? account.fullName).trim();
-    if (!name) throw new Error('Please enter your full name.');
+    if (!name) throw new Error("Please enter your full name.");
     if (name === account.fullName) return;
     await applyAccountUpdate({ ...account, fullName: name });
   },
 
   async changePassword(currentPassword, newPassword) {
     const account = await requireCurrentAccount();
-    if (!currentPassword) throw new Error('Please enter your current password.');
+    if (!currentPassword)
+      throw new Error("Please enter your current password.");
     if (newPassword.length < 8) {
-      throw new Error('Your new password must be at least 8 characters long.');
+      throw new Error("Your new password must be at least 8 characters long.");
     }
     if (newPassword === currentPassword) {
-      throw new Error('Choose a password different from your current one.');
+      throw new Error("Choose a password different from your current one.");
     }
     const currentHash = await hashPassword(currentPassword, account.salt);
     if (currentHash !== account.passwordHash) {
-      throw new Error('Your current password is incorrect. Please try again.');
+      throw new Error("Your current password is incorrect. Please try again.");
     }
     const salt = Crypto.randomUUID();
     await saveAccount({
@@ -415,25 +431,26 @@ export const authService: AuthService = {
     const account = await requireCurrentAccount();
     const mail = newEmail.trim().toLowerCase();
     if (!EMAIL_PATTERN.test(mail)) {
-      throw new Error('Please enter a valid email address.');
+      throw new Error("Please enter a valid email address.");
     }
     if (mail === account.email.toLowerCase()) {
-      throw new Error('That is already your email address.');
+      throw new Error("That is already your email address.");
     }
     if (!currentPassword) {
-      throw new Error('Please enter your password to confirm this change.');
+      throw new Error("Please enter your password to confirm this change.");
     }
     const passwordHash = await hashPassword(currentPassword, account.salt);
     if (passwordHash !== account.passwordHash) {
-      throw new Error('Your password is incorrect. Please try again.');
+      throw new Error("Your password is incorrect. Please try again.");
     }
     const accounts = await loadAccounts();
     if (
       accounts.some(
-        (other) => other.id !== account.id && other.email.toLowerCase() === mail
+        (other) =>
+          other.id !== account.id && other.email.toLowerCase() === mail,
       )
     ) {
-      throw new Error('Another account already uses that email address.');
+      throw new Error("Another account already uses that email address.");
     }
     await applyAccountUpdate({ ...account, email: mail });
   },
