@@ -1,11 +1,11 @@
 /**
  * Chunked private key/value storage.
  *
- * The admin database (including document metadata) lives in SecureStore on
- * device and in localStorage on web. SecureStore caps a single value at ~2KB
- * on Android, so large documents are split into fixed-size chunks under one
- * logical key. Nothing here ever produces a URL — identity documents are only
- * reachable through the in-app, audited viewer.
+ * The admin workspace cache lives in SecureStore on device and in localStorage
+ * on web. SecureStore caps a single value at ~2KB on Android, so values are
+ * split into fixed-size chunks under one logical key. Verification documents
+ * remain in private Supabase Storage and are only opened through the audited
+ * viewer.
  */
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';

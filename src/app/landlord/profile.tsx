@@ -1,4 +1,5 @@
 import { LandlordBottomBar } from '@/components/landlord/LandlordBottomBar';
+import { ErrorBanner } from '@/components/auth/ErrorBanner/ErrorBanner';
 import { routes } from '@/routes';
 import { authService, useAuthSession } from '@/services/auth';
 import { useAccountStanding, useAccountProfile, useProfileDraft } from '@/services/accountProfile';
@@ -163,6 +164,7 @@ export default function LandlordProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.inner}>
+          {standing.error ? <ErrorBanner message={standing.error} /> : null}
           {/* Header */}
           <View style={styles.headerRow}>
             <View style={styles.logoIconContainer}>

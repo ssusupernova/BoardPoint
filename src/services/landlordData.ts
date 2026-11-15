@@ -1,20 +1,12 @@
 /**
  * BoardPoint landlord data store.
  *
- * Single source of truth for the landlord's properties, rooms, tenants, rent
- * bills, activity feed and notifications. Records are persisted on-device
- * (SecureStore / localStorage) through a tiny observable store and every
- * count, list and money total rendered by the landlord screens is derived
- * from these records — nothing is hardcoded in the UI.
+ * The landlord's workspace is loaded from Supabase and cached on-device.
+ * Screens derive counts, lists, and totals from the same observable state.
  *
- * `SEED` is the starter dataset that replaces the arrays previously copied
- * into each screen. Clear it (or point hydration at a backend) and every
- * landlord screen falls back to its empty state.
- *
- * When a real backend lands:
- * 1. Create a client (e.g. `lib/supabase.ts`).
- * 2. Replace `hydrateLandlordData` with a fetch and each mutation with a
- *    write; the exported hooks keep their signatures.
+ * The starter dataset remains available for the unapproved/read-only demo
+ * experience. On first approved sign-in, user-created legacy records are
+ * migrated; records with the seed IDs are intentionally excluded.
  */
 
 import { renterMockRooms } from '@/data/renter';
@@ -31,8 +23,9 @@ import { DEFAULT_MAP_POINT } from '@/services/geocode';
 import { formatPeso } from '@/utils/currency';
 import { formatDisplayDate, formatShortDate, parseISODate, toISODate, MONTH_ABBRS } from '@/utils/date';
 import * as Crypto from 'expo-crypto';
-import { useMemo, useSyncExternalStore } from 'react';
-import { getAuthState } from '@/services/auth';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { getAuthState, useAuthSession } from '@/services/auth';
+import { supabase } from '@/backend/config/supabase';
 import { assertLandlordWriteAccess } from '@/services/landlordVerification';
 
 const STORAGE_KEY = 'landlord.data';
@@ -744,6 +737,82 @@ function cloneSeed(): LandlordData {
   return normalizeData(JSON.parse(JSON.stringify(seedData())));
 }
 
+function emptyData(): LandlordData {
+  return {
+    properties: [],
+    tenants: [],
+    bills: [],
+    payments: [],
+    activities: [],
+    notifications: [],
+    requests: [],
+    registrations: [],
+    sharedExpenses: [],
+    statements: [],
+  };
+}
+
+function withoutDemoFixtures(data: LandlordData): LandlordData {
+  const seed = seedData();
+  const seedPropertyIds = new Set(seed.properties.map((property) => property.id));
+  const seedRoomIds = new Set(seed.properties.flatMap((property) => property.rooms.map((room) => room.id)));
+  const seedTenantIds = new Set(seed.tenants.map((tenant) => tenant.id));
+  const seedBillIds = new Set(seed.bills.map((bill) => bill.id));
+  const seedPaymentIds = new Set(seed.payments.map((payment) => payment.id));
+  const seedActivityIds = new Set(seed.activities.map((activity) => activity.id));
+  const seedNotificationIds = new Set(seed.notifications.map((notification) => notification.id));
+  const seedExpenseIds = new Set(seed.sharedExpenses.map((expense) => expense.id));
+  const properties = data.properties
+    .filter((property) => !seedPropertyIds.has(property.id))
+    .map((property) => ({
+      ...property,
+      rooms: property.rooms.filter((room) => !seedRoomIds.has(room.id)),
+    }));
+  const propertyIds = new Set(properties.map((property) => property.id));
+  const tenants = data.tenants.filter(
+    (tenant) => !seedTenantIds.has(tenant.id) && propertyIds.has(tenant.propertyId),
+  );
+  const tenantIds = new Set(tenants.map((tenant) => tenant.id));
+  const bills = data.bills.filter(
+    (bill) =>
+      !seedBillIds.has(bill.id)
+      && propertyIds.has(bill.propertyId)
+      && tenantIds.has(bill.tenantId),
+  );
+  const billIds = new Set(bills.map((bill) => bill.id));
+
+  return normalizeData({
+    properties,
+    tenants,
+    bills,
+    payments: data.payments.filter(
+      (payment) => !seedPaymentIds.has(payment.id) && billIds.has(payment.billId),
+    ),
+    activities: data.activities.filter(
+      (activity) =>
+        !seedActivityIds.has(activity.id)
+        && (!activity.tenantId || tenantIds.has(activity.tenantId)),
+    ),
+    notifications: data.notifications.filter(
+      (notification) => !seedNotificationIds.has(notification.id),
+    ),
+    requests: data.requests.filter(
+      (request) => propertyIds.has(request.propertyId) && !seedRoomIds.has(request.roomId),
+    ),
+    registrations: data.registrations.filter(
+      (registration) =>
+        propertyIds.has(registration.propertyId) && !seedRoomIds.has(registration.roomId),
+    ),
+    sharedExpenses: data.sharedExpenses.filter(
+      (expense) =>
+        !seedExpenseIds.has(expense.id)
+        && propertyIds.has(expense.propertyId)
+        && expense.tenantIds.every((tenantId) => tenantIds.has(tenantId)),
+    ),
+    statements: data.statements.filter((statement) => propertyIds.has(statement.propertyId)),
+  });
+}
+
 /** Fill in fields missing on rooms from older caches or the starter seed. */
 function normalizeRoom(raw: Partial<LandlordRoom> & { id: string }): LandlordRoom {
   const availability: RoomAvailability =
@@ -857,6 +926,14 @@ function normalizeData(
 
 let state: LandlordData = cloneSeed();
 const listeners = new Set<() => void>();
+let dataReady = false;
+let dataError: string | null = null;
+let activeLandlordId: string | null = null;
+let loadedWorkspaceKey: string | null = null;
+let remoteRevision = 0;
+let lastPersistedState: LandlordData | null = null;
+let hydrationRevision = 0;
+let remoteWriteQueue: Promise<void> = Promise.resolve();
 
 function emit(): void {
   for (const listener of listeners) listener();
@@ -873,50 +950,223 @@ function setState(next: LandlordData): void {
 
 function subscribeLandlord(listener: () => void): () => void {
   listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+  return () => listeners.delete(listener);
 }
 
 function getSnapshot(): LandlordData {
   return state;
 }
 
-function persist(): Promise<void> {
-  return storageSet(STORAGE_KEY, JSON.stringify(state));
-}
-
-let dataReady = false;
-
 function getReadySnapshot(): boolean {
   return dataReady;
 }
 
-async function hydrateLandlordData(): Promise<void> {
-  const raw = await storageGet(STORAGE_KEY);
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw) as Partial<LandlordData>;
-      if (parsed && Array.isArray(parsed.properties) && Array.isArray(parsed.bills)) {
-        setState(normalizeData(parsed));
-      }
-    } catch {
-      // Ignore a malformed cache and keep the seed records.
-    }
-  }
-  dataReady = true;
-  emit();
+function getDataErrorSnapshot(): string | null {
+  return dataError;
 }
 
-void hydrateLandlordData();
+function parseLocalData(raw: string | null): LandlordData | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<LandlordData>;
+    if (!Array.isArray(parsed.properties) || !Array.isArray(parsed.bills)) return null;
+    return normalizeData(parsed);
+  } catch (error) {
+    console.warn('Unable to read the saved landlord workspace:', error);
+    return null;
+  }
+}
+
+function workspaceStorageKey(userId: string): string {
+  return `${STORAGE_KEY}.${userId}`;
+}
+
+function cloneLandlordData(data: LandlordData): LandlordData {
+  return JSON.parse(JSON.stringify(data)) as LandlordData;
+}
+
+function landlordWorkspaceError(error: unknown): Error {
+  return error instanceof Error ? error : new Error('Unable to sync landlord data with Supabase.');
+}
+
+async function saveRemoteWorkspace(
+  userId: string,
+  payload: LandlordData,
+  expectedRevision: number,
+): Promise<number> {
+  if (activeLandlordId !== userId || getAuthState().session?.user.id !== userId) {
+    throw new Error('The signed-in account changed before landlord data could be saved.');
+  }
+  const { data, error } = await supabase.rpc('save_landlord_workspace', {
+    p_payload: payload,
+    p_expected_revision: expectedRevision,
+  });
+  if (error) throw new Error(`Unable to save landlord data: ${error.message}`);
+  const revision = Number(data);
+  if (!Number.isSafeInteger(revision) || revision < 1) {
+    throw new Error('Supabase returned an invalid landlord workspace revision.');
+  }
+  if (activeLandlordId !== userId || getAuthState().session?.user.id !== userId) {
+    throw new Error('The signed-in account changed before landlord data finished saving.');
+  }
+  return revision;
+}
+
+async function hydrateLandlordData(
+  userId: string | null,
+  shouldSync: boolean,
+  force = false,
+): Promise<void> {
+  const workspaceKey = shouldSync && userId ? userId : null;
+  if (!force && loadedWorkspaceKey === workspaceKey && dataReady) return;
+
+  const revision = ++hydrationRevision;
+  loadedWorkspaceKey = workspaceKey;
+  activeLandlordId = workspaceKey;
+  remoteRevision = 0;
+  lastPersistedState = null;
+  dataReady = false;
+  dataError = null;
+  state = shouldSync ? emptyData() : cloneSeed();
+  emit();
+
+  if (!workspaceKey) {
+    dataReady = true;
+    emit();
+    return;
+  }
+
+  let localFallback = parseLocalData(await storageGet(workspaceStorageKey(workspaceKey)));
+  let legacyData: LandlordData | null = null;
+  if (!localFallback) {
+    legacyData = parseLocalData(await storageGet(STORAGE_KEY));
+    if (legacyData) localFallback = withoutDemoFixtures(legacyData);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('landlord_workspace_snapshots')
+      .select('payload, revision')
+      .eq('landlord_id', workspaceKey)
+      .maybeSingle();
+    if (error) throw new Error(`Unable to load landlord data: ${error.message}`);
+
+    let loadedData: LandlordData;
+    if (data) {
+      if (
+        !data.payload
+        || typeof data.payload !== 'object'
+        || !Array.isArray(data.payload.properties)
+        || !Array.isArray(data.payload.bills)
+        || !Number.isSafeInteger(Number(data.revision))
+      ) {
+        throw new Error('The saved landlord workspace has an invalid format.');
+      }
+      loadedData = normalizeData(data.payload);
+      remoteRevision = Number(data.revision);
+    } else {
+      const { data: verification, error: verificationError } = await supabase
+        .from('landlord_verification_applications')
+        .select('status')
+        .eq('landlord_id', workspaceKey)
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (verificationError) {
+        throw new Error(`Unable to confirm landlord approval before migration: ${verificationError.message}`);
+      }
+      const migrated = localFallback ?? emptyData();
+      loadedData = normalizeData({
+        ...migrated,
+        properties: migrated.properties.map((property) => ({
+          ...property,
+          landlordId: property.landlordId ?? workspaceKey,
+        })),
+      });
+      if (verification?.status === 'approved') {
+        remoteRevision = await saveRemoteWorkspace(workspaceKey, loadedData, 0);
+        if (legacyData) await storageSet(STORAGE_KEY, null);
+      }
+    }
+
+    if (revision !== hydrationRevision) return;
+    state = loadedData;
+    if (remoteRevision > 0) lastPersistedState = cloneLandlordData(loadedData);
+    await storageSet(workspaceStorageKey(workspaceKey), JSON.stringify(state));
+    dataReady = true;
+    emit();
+  } catch (error) {
+    if (revision !== hydrationRevision) return;
+    dataError = landlordWorkspaceError(error).message;
+    console.error('Unable to hydrate the landlord workspace from Supabase:', error);
+    state = localFallback ?? emptyData();
+    dataReady = true;
+    emit();
+  }
+}
+
+function persist(): Promise<void> {
+  const session = getAuthState().session;
+  const serialized = JSON.stringify(state);
+  if (session?.user.role !== 'landlord') {
+    return storageSet(STORAGE_KEY, serialized);
+  }
+
+  const userId = session.user.id;
+  if (activeLandlordId !== userId || !dataReady) {
+    return Promise.reject(new Error('Landlord data is still loading. Please try again.'));
+  }
+  assertLandlordWriteAccess(userId);
+
+  const save = remoteWriteQueue.then(async () => {
+    await storageSet(workspaceStorageKey(userId), serialized);
+    const payload = JSON.parse(serialized) as LandlordData;
+    const nextRevision = await saveRemoteWorkspace(userId, payload, remoteRevision);
+    remoteRevision = nextRevision;
+    lastPersistedState = cloneLandlordData(payload);
+    dataError = null;
+    emit();
+  });
+  remoteWriteQueue = save.then(
+    () => undefined,
+    () => undefined,
+  );
+  return save.catch((error: unknown) => {
+    dataError = landlordWorkspaceError(error).message;
+    if (lastPersistedState && JSON.stringify(state) === serialized) {
+      state = cloneLandlordData(lastPersistedState);
+    }
+    emit();
+    throw error;
+  });
+}
 
 export function useLandlordData(): LandlordData {
   return useSyncExternalStore(subscribeLandlord, getSnapshot, getSnapshot);
 }
 
-/** Loading gate for screens that must wait for the on-device cache. */
+/** Loading gate for screens that wait for the active landlord workspace. */
 export function useLandlordDataReady(): boolean {
   return useSyncExternalStore(subscribeLandlord, getReadySnapshot, getReadySnapshot);
+}
+
+/** Supabase load/save error shown by the landlord navigator. */
+export function useLandlordDataError(enabled: boolean): string | null {
+  const { hydrated, session } = useAuthSession();
+  const userId = session?.user.role === 'landlord' ? session.user.id : null;
+
+  useEffect(() => {
+    if (!hydrated) return;
+    void hydrateLandlordData(userId, enabled && Boolean(userId));
+  }, [enabled, hydrated, userId]);
+
+  return useSyncExternalStore(subscribeLandlord, getDataErrorSnapshot, getDataErrorSnapshot);
+}
+
+export function retryLandlordWorkspace(enabled: boolean): Promise<void> {
+  const session = getAuthState().session;
+  const userId = session?.user.role === 'landlord' ? session.user.id : null;
+  return hydrateLandlordData(userId, enabled && Boolean(userId), true);
 }
 
 /** Active tenants currently assigned to a room. */

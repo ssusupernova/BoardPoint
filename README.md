@@ -57,9 +57,11 @@ Join our community of developers creating universal apps.
 
 ## Supabase backend
 
-The app reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` from `.env`. Set the URL to the project root (for example, `https://<project-ref>.supabase.co`), not an API endpoint such as `/rest/v1/`. Apply the base BoardPoint schema before the migrations in `supabase/migrations`.
+The app reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` from `.env`. Set the URL to the project root (for example, `https://<project-ref>.supabase.co`), not an API endpoint such as `/rest/v1/`. The repository now includes the base schema and auth-profile trigger. For a fresh Supabase project, link the Supabase CLI to the project and apply the ordered migrations with `supabase db push`; do not apply the later migrations before the base schema.
 
 The landlord verification migration creates a private `verification-files` bucket, restricts landlord write policies until an application is approved, and adds admin-only review functions. Landlords confirm their email before submitting the required ID-front, ID-back, selfie-with-ID, and proof-of-address images. Administrators review live submissions from Admin → Landlord verification; document access is audited and signed preview links expire after one minute. Apply the migration before testing this flow.
+
+The `20261116010000_workspace_snapshots.sql` migration adds revision-checked Supabase workspaces for landlord data and the shared admin workspace. It runs after the base schema, username-auth, auth-profile trigger, and landlord-verification migrations. An approved landlord's first login imports their non-seed local properties and related records; hard-coded demo fixtures are excluded. The admin workspace starts without seeded demo accounts, listings, and reports; local admin preferences are retained, but local actions against seeded demo records are not migrated. These workspaces persist the app's existing aggregate data models as JSONB snapshots. Property and tenant photo URIs are not uploaded to Supabase Storage, so local-file photos are not available on other devices.
 
 Username login and username-based password recovery use the `username-auth` Edge Function. After linking the Supabase CLI to the project, apply the migration, set a random server-only rate-limit secret, and deploy the function:
 

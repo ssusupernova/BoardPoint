@@ -9,14 +9,15 @@
  * Also exposes:
  *  - an in-memory draft of unsaved profile edits, so the account screen can
  *    warn before signing out, and
- *  - `useAccountStanding`, which reads the REAL verification and account
- *    status from the admin database (the app's backend). Landlords can never
- *    change these values from the app.
+ *  - `useAccountStanding`, which reads verification and account status from
+ *    the signed-in user's Supabase records.
  */
 
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { storageGet, storageSet } from '@/services/storage';
-import { useAdminStore } from '@/services/admin/store';
+import { supabase } from '@/backend/config/supabase';
+import { useAuthSession } from '@/services/auth';
+import { useLandlordVerification } from '@/services/landlordVerification';
 import type { AccountStatus, LandlordVerificationState } from '@/services/admin/types';
 
 /** Extra account fields owned by the signed-in user's profile. */
@@ -127,40 +128,110 @@ export interface AccountStanding {
   accountStatus: AccountStatus | null;
   suspensionReason: string | null;
   joinedAt: string | null;
-  /** True when an administrator record exists for this email address. */
+  /** True when the signed-in Supabase profile exists. */
   linked: boolean;
+  error: string | null;
 }
 
-const UNVERIFIED: AccountStanding = {
-  loading: false,
-  verification: 'unverified',
-  accountStatus: null,
-  suspensionReason: null,
-  joinedAt: null,
+interface ProfileStanding {
+  userId: string | null;
+  loaded: boolean;
+  status: AccountStatus | null;
+  linked: boolean;
+  error: string | null;
+}
+
+const EMPTY_STANDING: ProfileStanding = {
+  userId: null,
+  loaded: false,
+  status: null,
   linked: false,
+  error: null,
 };
 
+function verificationState(
+  status: string | null,
+): LandlordVerificationState {
+  switch (status) {
+    case 'pending':
+    case 'under_review':
+      return 'pending';
+    case 'more_information_requested':
+      return 'info_requested';
+    case 'approved':
+      return 'verified';
+    case 'rejected':
+      return 'rejected';
+    default:
+      return 'unverified';
+  }
+}
+
 /**
- * The signed-in landlord's real standing, read from the admin database by
- * email address. There is no landlord-side write path — only administrators
- * approve, reject, suspend, or reactivate accounts.
+ * The signed-in landlord's account status and verification state are read from
+ * their Supabase profile and verification application.
  */
 export function useAccountStanding(email: string | null): AccountStanding {
-  const { status, db } = useAdminStore();
-  const key = (email ?? '').trim().toLowerCase();
-  if (!db || !key) {
-    return status === 'ready' ? UNVERIFIED : { ...UNVERIFIED, loading: true };
-  }
-  const record = db.landlords.find(
-    (landlord) => landlord.email.trim().toLowerCase() === key
-  );
-  if (!record) return UNVERIFIED;
+  const { session } = useAuthSession();
+  const normalizedEmail = (email ?? '').trim().toLowerCase();
+  const userId = session?.user.email.toLowerCase() === normalizedEmail
+    ? session.user.id
+    : null;
+  const verification = useLandlordVerification(userId ?? undefined);
+  const [profile, setProfile] = useState<ProfileStanding>(EMPTY_STANDING);
+
+  useEffect(() => {
+    let active = true;
+    if (userId) {
+      void (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('account_status')
+            .eq('id', userId)
+            .maybeSingle();
+          if (!active) return;
+          if (error) {
+            console.error('Unable to load account standing:', error);
+            setProfile({
+              userId,
+              loaded: true,
+              status: null,
+              linked: false,
+              error: `Unable to load account standing: ${error.message}`,
+            });
+            return;
+          }
+          setProfile({
+            userId,
+            loaded: true,
+            status: data
+              ? data.account_status === 'suspended' ? 'suspended' : 'active'
+              : null,
+            linked: Boolean(data),
+            error: null,
+          });
+        } catch (error) {
+          if (!active) return;
+          const message = error instanceof Error ? error.message : 'Unable to load account standing.';
+          console.error('Unable to load account standing:', error);
+          setProfile({ userId, loaded: true, status: null, linked: false, error: message });
+        }
+      })();
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
   return {
-    loading: false,
-    verification: record.verificationStatus,
-    accountStatus: record.accountStatus,
-    suspensionReason: record.suspensionReason,
-    joinedAt: record.joinedAt,
-    linked: true,
+    loading: Boolean(userId) && (!profile.loaded || profile.userId !== userId || verification.loading),
+    verification: verificationState(verification.status),
+    accountStatus: profile.userId === userId ? profile.status : null,
+    suspensionReason: null,
+    joinedAt: null,
+    linked: profile.userId === userId && profile.linked,
+    error: profile.userId === userId ? profile.error : null,
   };
 }
