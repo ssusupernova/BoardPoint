@@ -144,6 +144,34 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
   },
+  requestButton: {
+    marginTop: spacing.sm,
+    minHeight: 40,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  requestButtonPressed: {
+    opacity: 0.7,
+  },
+  requestButtonDisabled: {
+    opacity: 0.5,
+  },
+  requestButtonLabel: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    color: colors.primary,
+  },
+  submitError: {
+    marginTop: spacing.sm,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.error,
+  },
   action: {
     marginTop: spacing.xl,
   },

@@ -6,6 +6,7 @@ import { OutlineButton } from '@/components/ui/OutlineButton/OutlineButton';
 import type { RenterRoom } from '@/data/mock';
 import { colors } from '@/theme';
 import { formatPeso } from '@/utils/currency';
+import { estimateTravelMinutes, formatTravelDuration } from '@/utils/distance';
 import { styles } from './RoomListingCard.styles';
 
 type Props = {
@@ -23,6 +24,9 @@ export function RoomListingCard({ room, isFavorite, onToggleFavorite, onViewRoom
     room.distanceFromLabel != null
       ? `${room.distanceKm} km from ${room.distanceFromLabel}`
       : `${room.distanceKm} km away`;
+  const travelTime = formatTravelDuration(
+    estimateTravelMinutes(room.distanceKm, 'vehicle'),
+  );
 
   return (
     <View style={styles.card}>
@@ -95,7 +99,7 @@ export function RoomListingCard({ room, isFavorite, onToggleFavorite, onViewRoom
 
         <View style={styles.distanceRow}>
           <Ionicons name="navigate-outline" size={14} color={colors.textSecondary} />
-          <Text style={styles.distance}>{distance}</Text>
+          <Text style={styles.distance}>{distance} · about {travelTime} by vehicle</Text>
         </View>
 
         <View style={styles.action}>

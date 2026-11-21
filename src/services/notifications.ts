@@ -8,10 +8,12 @@
 
 import { renterNotifications, type AppNotification } from '@/data/mock';
 import type { NotificationCategory } from '@/data/types';
+import { supabase } from '@/backend/config/supabase';
+import { useAuthSession } from '@/services/auth';
 import { storageGet, storageSet } from '@/services/storage';
 import { MONTH_ABBRS } from '@/utils/date';
 import * as Crypto from 'expo-crypto';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 const STORAGE_KEY = 'notifications.read';
 const PUSHED_KEY = 'notifications.pushed';
@@ -30,8 +32,8 @@ let notifications: AppNotification[] = seeds.map((item) => ({
 
 let pushed: PushedNotification[] = [];
 let readIds = new Set<string>();
-let hydrated = false;
 let hydrationPromise: Promise<void> | undefined;
+let hydratedUserId: string | null = null;
 
 const listeners = new Set<() => void>();
 
@@ -58,7 +60,12 @@ function getSnapshot(): AppNotification[] {
 }
 
 export function useNotifications(): AppNotification[] {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const { session } = useAuthSession();
+  useEffect(() => {
+    void hydrate(session?.user.id ?? null);
+  }, [session?.user.id]);
+  return snapshot;
 }
 
 export function useUnreadCount(): number {
@@ -101,10 +108,11 @@ function rebuild(): AppNotification[] {
 }
 
 /** Load persisted read state and pushed notifications once. */
-async function hydrate(): Promise<void> {
-  if (hydrationPromise) {
+async function hydrate(userId: string | null = null): Promise<void> {
+  if (hydrationPromise && hydratedUserId === userId) {
     return hydrationPromise;
   }
+  hydratedUserId = userId;
 
   hydrationPromise = (async () => {
     const [readRaw, pushedRaw] = await Promise.all([
@@ -145,8 +153,30 @@ async function hydrate(): Promise<void> {
       }
     }
 
+    if (userId) {
+      const { data, error } = await supabase
+        .from('renter_notifications')
+        .select(
+          'id, category, day, timestamp_label, title, description, status_label, is_read, created_at',
+        )
+        .eq('renter_id', userId)
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        pushed = data.map((row) => ({
+          id: row.id,
+          category: row.category as NotificationCategory,
+          day: row.day as 'today' | 'earlier',
+          timestampLabel: row.timestamp_label,
+          title: row.title,
+          description: row.description,
+          statusLabel: row.status_label ?? undefined,
+          read: row.is_read,
+          createdAt: row.created_at,
+        }));
+      }
+    }
+
     setNotifications(rebuild());
-    hydrated = true;
   })();
 
   try {
@@ -165,10 +195,28 @@ export async function addNotification(notification: AppNotification): Promise<vo
   if (notifications.some((item) => item.id === notification.id)) return;
   setNotifications([notification, ...notifications]);
   await persistReadIds();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  const { error } = await supabase
+    .from('renter_notifications')
+    .upsert({
+      id: notification.id,
+      renter_id: session.user.id,
+      category: notification.category,
+      day: notification.day,
+      timestamp_label: notification.timestampLabel,
+      title: notification.title,
+      description: notification.description,
+      status_label: notification.statusLabel ?? null,
+      is_read: notification.read ?? false,
+      created_at: new Date().toISOString(),
+    }, { onConflict: 'renter_id,id' });
+  if (error) throw error;
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
-  await hydrate();
+  const { data: { session } } = await supabase.auth.getSession();
+  await hydrate(session?.user.id ?? null);
 
   readIds = new Set(notifications.map((item) => item.id));
   setNotifications(
@@ -176,6 +224,13 @@ export async function markAllNotificationsRead(): Promise<void> {
   );
 
   await persistReadIds();
+  if (session) {
+    const { error } = await supabase
+      .from('renter_notifications')
+      .update({ is_read: true })
+      .eq('renter_id', session.user.id);
+    if (error) throw error;
+  }
 }
 
 export async function markNotificationRead(id: string): Promise<void> {

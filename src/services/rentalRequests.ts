@@ -18,25 +18,17 @@
  */
 
 import { useEffect, useSyncExternalStore } from 'react';
+import { supabase } from '@/backend/config/supabase';
 import {
   renterProfile,
   renterSeedRentalRequests,
   type RentalRequest,
   type RentalRequestStatus,
 } from '@/data/renter';
-import type { AppNotification, Tenancy } from '@/data/mock';
+import type { Tenancy } from '@/data/mock';
 import { useAuthSession } from '@/services/auth';
-import { addNotification } from '@/services/notifications';
 import { storageGet, storageSet } from '@/services/storage';
-import { MONTH_ABBRS, toISODate } from '@/utils/date';
-
-/**
- * How long a submitted request stays pending before the mock "landlord"
- * auto-accepts it. Mirrors the real approval flow so the notification, payments
- * and Active Renter badge can be demonstrated end-to-end. Replace with a real
- * landlord accept/decline action on the backend later.
- */
-const AUTO_ACCEPT_MS = 15_000;
+import { toISODate } from '@/utils/date';
 const LEASE_LENGTH_MONTHS = 6;
 
 let userId: string | null = null;
@@ -44,7 +36,6 @@ let boundUserId: string | null = null;
 let requests: RentalRequest[] = [];
 let hydratedFor: string | null = null;
 const listeners = new Set<() => void>();
-const confirmTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function emit(): void {
   for (const listener of listeners) listener();
@@ -92,6 +83,7 @@ interface MirroredRequest {
   roomId: string;
   roomTitle: string;
   propertyName: string;
+  address: string;
   monthlyRent: number;
   status: RentalRequestStatus;
   submittedAt: string;
@@ -106,6 +98,7 @@ function toLocal(entry: MirroredRequest): RentalRequest {
     roomId: entry.roomId,
     roomTitle: entry.roomTitle,
     propertyName: entry.propertyName,
+    address: entry.address,
     monthlyRent: entry.monthlyRent,
     status: entry.status,
     submittedAt: entry.submittedAt,
@@ -179,14 +172,41 @@ async function bind(nextUserId: string | null, email: string): Promise<void> {
       // Ignore malformed cache and keep the seeded requests.
     }
   }
-  setRequests(mergeLedger(base, nextUserId));
+  base = mergeLedger(base, nextUserId);
+
+  const { data, error } = await supabase
+    .from('renter_rental_requests')
+    .select(
+      'id, room_id, room_title, property_name, address, monthly_rent, status, submitted_at, decided_at',
+    )
+    .eq('renter_id', nextUserId)
+    .order('submitted_at', { ascending: false });
+  if (!error && data) {
+    const remote = data.map((row) => ({
+      id: row.id,
+      roomId: row.room_id,
+      roomTitle: row.room_title,
+      propertyName: row.property_name,
+      address: row.address ?? '',
+      monthlyRent: Number(row.monthly_rent),
+      status:
+        row.status === 'confirmed'
+          ? ('Confirmed' as const)
+          : row.status === 'declined'
+            ? ('Declined' as const)
+            : ('Pending' as const),
+      submittedAt: row.submitted_at,
+      decidedAt: row.decided_at ?? undefined,
+    }));
+    setRequests(remote);
+  } else {
+    setRequests(base);
+  }
 }
 
 /** Re-arm the mock approval for any request still pending after a reload. */
 function resumePending(): void {
-  for (const request of requests) {
-    if (request.status === 'Pending') scheduleConfirm(request.id);
-  }
+  // Pending requests now wait for a real landlord decision in Supabase.
 }
 
 /**
@@ -333,54 +353,6 @@ async function persist(): Promise<void> {
   await storageSet(storageKeyFor(userId), JSON.stringify(requests));
 }
 
-function acceptanceTimestamp(date: Date): string {
-  const hours = date.getHours();
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${date.getDate()} ${MONTH_ABBRS[date.getMonth()]} · ${hour12}:${minutes} ${period}`;
-}
-
-function acceptanceNotification(request: RentalRequest, decidedAt: string): AppNotification {
-  return {
-    id: `notif-accepted-${request.id}`,
-    category: 'rent',
-    day: 'today',
-    timestampLabel: acceptanceTimestamp(new Date()),
-    title: 'Rental request accepted',
-    description: `Your request for ${request.roomTitle} at ${request.propertyName} was accepted. Welcome home!`,
-    statusLabel: 'Confirmed',
-  };
-}
-
-/**
- * Move a pending request to Confirmed (the mock landlord approving it) and drop
- * an acceptance notification into the alerts feed. No-op for already-decided
- * requests so the timer and the persisted state can't double-fire.
- */
-async function confirmRequest(id: string): Promise<void> {
-  const target = requests.find((request) => request.id === id);
-  if (!target || target.status !== 'Pending') return;
-
-  const decidedAt = toISODate(new Date());
-  const decided: RentalRequest = { ...target, status: 'Confirmed', decidedAt };
-  setRequests(requests.map((request) => (request.id === id ? decided : request)));
-  await Promise.all([
-    persist(),
-    addNotification(acceptanceNotification(decided, decidedAt)),
-  ]);
-}
-
-/** Schedule the mock approval for a pending request (idempotent per id). */
-function scheduleConfirm(id: string): void {
-  if (confirmTimers.has(id)) return;
-  const timer = setTimeout(() => {
-    confirmTimers.delete(id);
-    void confirmRequest(id);
-  }, AUTO_ACCEPT_MS);
-  confirmTimers.set(id, timer);
-}
-
 /**
  * Submit a rental request for a room. If the room already has an active
  * request (pending or confirmed) it is returned unchanged so the action is
@@ -405,7 +377,24 @@ export async function submitRentalRequest(
 
   setRequests([...requests.filter((entry) => entry.roomId !== input.roomId), request]);
   await persist();
-  scheduleConfirm(request.id);
+  if (userId) {
+    const { error } = await supabase
+      .from('renter_rental_requests')
+      .upsert({
+        id: request.id,
+        renter_id: userId,
+        room_id: request.roomId,
+        room_title: request.roomTitle,
+        property_name: request.propertyName,
+        address: request.address,
+        monthly_rent: request.monthlyRent,
+        status: 'pending',
+        submitted_at: request.submittedAt,
+        decided_at: null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'renter_id,id' });
+    if (error) throw error;
+  }
   return request;
 }
 
@@ -417,6 +406,7 @@ export interface MirrorRentalRequestInput {
   roomId: string;
   roomTitle: string;
   propertyName: string;
+  address?: string;
   monthlyRent: number;
   status: RentalRequestStatus;
   /** Date-only (yyyy-mm-dd) the request was submitted. */
@@ -439,6 +429,7 @@ export async function mirrorRentalRequest(input: MirrorRentalRequestInput): Prom
     roomId: input.roomId,
     roomTitle: input.roomTitle,
     propertyName: input.propertyName,
+    address: input.address ?? '',
     monthlyRent: input.monthlyRent,
     status: input.status,
     submittedAt: input.submittedAt,
@@ -468,6 +459,28 @@ export async function mirrorRentalRequest(input: MirrorRentalRequestInput): Prom
   } catch {
     // Best-effort mirror; future binds re-merge whatever made it to storage.
   }
+  const status =
+    input.status === 'Confirmed'
+      ? 'confirmed'
+      : input.status === 'Declined'
+        ? 'declined'
+        : 'pending';
+  const { error } = await supabase
+    .from('renter_rental_requests')
+    .upsert({
+      id: input.requestId,
+      renter_id: input.renterId,
+      room_id: input.roomId,
+      room_title: input.roomTitle,
+      property_name: input.propertyName,
+      address: input.address ?? '',
+      monthly_rent: input.monthlyRent,
+      status,
+      submitted_at: input.submittedAt,
+      decided_at: input.decidedAt ?? null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'renter_id,id' });
+  if (error) throw error;
 }
 
 /** Withdraw a pending request. Confirmed registrations can't be withdrawn here. */
@@ -489,4 +502,12 @@ export async function cancelRentalRequest(id: string): Promise<void> {
     }
   }
   await persist();
+  if (boundUserId) {
+    const { error } = await supabase
+      .from('renter_rental_requests')
+      .delete()
+      .eq('renter_id', boundUserId)
+      .eq('id', id);
+    if (error) throw error;
+  }
 }

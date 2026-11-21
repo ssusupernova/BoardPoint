@@ -6,8 +6,10 @@
  * room fixtures and persisted on-device.
  */
 
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { renterMockRooms } from '@/data/mock';
+import { supabase } from '@/backend/config/supabase';
+import { useAuthSession } from '@/services/auth';
 import { storageGet, storageSet } from '@/services/storage';
 
 const STORAGE_KEY = 'favorites.rooms';
@@ -15,7 +17,7 @@ const STORAGE_KEY = 'favorites.rooms';
 let favoriteIds: string[] = renterMockRooms
   .filter((room) => room.isFavorite)
   .map((room) => room.id);
-let hydrated = false;
+let hydratedFor: string | null = null;
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -39,23 +41,35 @@ function getSnapshot(): string[] {
 }
 
 export function useFavoriteRoomIds(): string[] {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const { session } = useAuthSession();
+
+  useEffect(() => {
+    void hydrate(session?.user.id ?? null);
+  }, [session?.user.id]);
+
+  return snapshot;
 }
 
-async function hydrate(): Promise<void> {
-  if (hydrated) return;
-  hydrated = true;
+async function hydrate(userId: string | null): Promise<void> {
+  if (!userId || hydratedFor === userId) return;
+  hydratedFor = userId;
   const raw = await storageGet(STORAGE_KEY);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw) as string[];
-    if (Array.isArray(parsed)) setFavoriteIds(parsed);
-  } catch {
-    // Ignore malformed cache and keep the seeded favorites.
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as string[];
+      if (Array.isArray(parsed)) setFavoriteIds(parsed);
+    } catch {
+      // Ignore malformed cache and keep the seeded favorites.
+    }
   }
+  const { data, error } = await supabase
+    .from('renter_favorites')
+    .select('room_id')
+    .eq('renter_id', userId);
+  if (error) throw error;
+  if (data) setFavoriteIds(data.map((row) => row.room_id));
 }
-
-void hydrate();
 
 export async function toggleFavoriteRoom(id: string): Promise<void> {
   const next = favoriteIds.includes(id)
@@ -63,4 +77,20 @@ export async function toggleFavoriteRoom(id: string): Promise<void> {
     : [...favoriteIds, id];
   setFavoriteIds(next);
   await storageSet(STORAGE_KEY, JSON.stringify(next));
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user.id;
+  if (!userId) return;
+  if (next.includes(id)) {
+    const { error } = await supabase
+      .from('renter_favorites')
+      .insert({ renter_id: userId, room_id: id });
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from('renter_favorites')
+      .delete()
+      .eq('renter_id', userId)
+      .eq('room_id', id);
+    if (error) throw error;
+  }
 }

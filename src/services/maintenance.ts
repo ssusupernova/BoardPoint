@@ -7,9 +7,11 @@
  * API (useMaintenanceTickets / submitMaintenanceTicket) stays the same.
  */
 
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import * as Crypto from 'expo-crypto';
 import { renterMaintenance, type MaintenanceTicket } from '@/data/mock';
+import { supabase } from '@/backend/config/supabase';
+import { useAuthSession } from '@/services/auth';
 import { storageGet, storageSet } from '@/services/storage';
 import { toISODate } from '@/utils/date';
 
@@ -24,7 +26,7 @@ export interface MaintenanceInput {
 }
 
 let tickets: MaintenanceTicket[] = [...renterMaintenance];
-let hydrated = false;
+let hydratedFor: string | null = null;
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -48,23 +50,46 @@ function getSnapshot(): MaintenanceTicket[] {
 }
 
 export function useMaintenanceTickets(): MaintenanceTicket[] {
-  return useSyncExternalStore(subscribeMaintenance, getSnapshot, getSnapshot);
+  const snapshot = useSyncExternalStore(subscribeMaintenance, getSnapshot, getSnapshot);
+  const { session } = useAuthSession();
+
+  useEffect(() => {
+    void hydrateMaintenance(session?.user.id ?? null);
+  }, [session?.user.id]);
+
+  return snapshot;
 }
 
-async function hydrateMaintenance(): Promise<void> {
-  if (hydrated) return;
-  hydrated = true;
+async function hydrateMaintenance(userId: string | null): Promise<void> {
+  if (!userId || hydratedFor === userId) return;
+  hydratedFor = userId;
   const raw = await storageGet(STORAGE_KEY);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw) as MaintenanceTicket[];
-    if (Array.isArray(parsed)) setTickets(parsed);
-  } catch {
-    // Ignore malformed cache and keep the seeded tickets.
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as MaintenanceTicket[];
+      if (Array.isArray(parsed)) setTickets(parsed);
+    } catch {
+      // Ignore malformed cache and keep the seeded tickets.
+    }
+  }
+  const { data, error } = await supabase
+    .from('renter_maintenance_tickets')
+    .select('id, title, category, details, photo_uri, status, updated_at')
+    .eq('renter_id', userId)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  if (data) {
+    setTickets(data.map((row) => ({
+      id: row.id,
+      title: row.title,
+      detail: row.details,
+      category: row.category,
+      updatedAt: row.updated_at,
+      status: row.status as MaintenanceTicket['status'],
+      photoUri: row.photo_uri ?? undefined,
+    })));
   }
 }
-
-void hydrateMaintenance();
 
 export async function submitMaintenanceTicket(input: MaintenanceInput): Promise<MaintenanceTicket> {
   const ticket: MaintenanceTicket = {
@@ -78,5 +103,22 @@ export async function submitMaintenanceTicket(input: MaintenanceInput): Promise<
   };
   setTickets([ticket, ...tickets]);
   await storageSet(STORAGE_KEY, JSON.stringify(tickets));
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user.id;
+  if (userId) {
+    const { error } = await supabase
+      .from('renter_maintenance_tickets')
+      .insert({
+        id: ticket.id,
+        renter_id: userId,
+        title: ticket.title,
+        category: ticket.category,
+        details: ticket.detail,
+        photo_uri: ticket.photoUri ?? null,
+        status: ticket.status,
+        updated_at: ticket.updatedAt,
+      });
+    if (error) throw error;
+  }
   return ticket;
 }

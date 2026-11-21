@@ -14,6 +14,8 @@
 
 import { useSyncExternalStore, type ComponentProps } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { supabase } from '@/backend/config/supabase';
+import { getAuthState } from '@/services/auth';
 import { storageGet, storageSet } from '@/services/storage';
 
 const PREFS_KEY = 'landlord.notificationPrefs';
@@ -213,6 +215,17 @@ async function hydrate(): Promise<void> {
   } catch {
     // Ignore malformed cache and keep the defaults.
   }
+  const userId = getAuthState().session?.user.id;
+  if (!userId) return;
+  const { data, error } = await supabase
+    .from('notification_preferences')
+    .select('preferences')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (!error && data) {
+    prefs = normalizePrefs(data.preferences);
+    emit();
+  }
 }
 
 void hydrate();
@@ -233,10 +246,32 @@ export async function setNotificationPref(
   prefs = { ...prefs, [kind]: enabled };
   emit();
   await storageSet(PREFS_KEY, JSON.stringify(prefs)).catch(() => undefined);
+  const userId = getAuthState().session?.user.id;
+  if (userId) {
+    const { error } = await supabase
+      .from('notification_preferences')
+      .upsert({
+        user_id: userId,
+        preferences: prefs,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+    if (error) throw error;
+  }
 }
 
 export async function resetNotificationPrefs(): Promise<void> {
   prefs = { ...DEFAULT_PREFS };
   emit();
   await storageSet(PREFS_KEY, JSON.stringify(prefs)).catch(() => undefined);
+  const userId = getAuthState().session?.user.id;
+  if (userId) {
+    const { error } = await supabase
+      .from('notification_preferences')
+      .upsert({
+        user_id: userId,
+        preferences: prefs,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+    if (error) throw error;
+  }
 }

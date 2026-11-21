@@ -5,6 +5,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton/PrimaryButton';
 import { renterMockRooms } from '@/data/mock';
 import { routes } from '@/routes';
 import { useAuthSession } from '@/services/auth';
+import { loadChecklist, type RenterChecklist } from '@/services/checklist';
 import { toggleFavoriteRoom, useFavoriteRoomIds } from '@/services/favorites';
 import {
   useIsVerifiedRenter,
@@ -18,8 +19,16 @@ import { toErrorMessage } from '@/utils/errors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useCurrentLocation } from '@/hooks/useCurrentLocation';
+import type { GeoPoint } from '@/services/geocode';
+import {
+  distanceBetweenKm,
+  estimateTravelMinutes,
+  formatDistanceKm,
+  formatTravelDuration,
+} from '@/utils/distance';
 import { styles } from './RoomDetailScreen.styles';
 
 export default function RoomDetailScreen() {
@@ -32,12 +41,38 @@ export default function RoomDetailScreen() {
   const { properties } = useLandlordData();
 
   const room = renterMockRooms.find((item) => item.id === id);
+  const property = room
+    ? properties.find((item) => item.id === room.propertyId)
+    : undefined;
 
   const requestState = useRoomRequestState(renterId, id ?? '');
   const isVerified = useIsVerifiedRenter(renterId, room?.propertyId);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [originPoint, setOriginPoint] = useState<GeoPoint | null>(null);
+  const [originLabel, setOriginLabel] = useState('saved location');
+  const { loading: locating, error: locationError, getLocation } = useCurrentLocation();
+
+  useEffect(() => {
+    if (!renterId) {
+      return;
+    }
+    void loadChecklist(renterId)
+      .then((checklist: RenterChecklist | null) => {
+        setOriginPoint(checklist?.originPoint ?? null);
+        setOriginLabel(checklist?.originLabel || 'saved location');
+      })
+      .catch(() => undefined);
+  }, [renterId]);
+
+  const handleUseCurrentLocation = async () => {
+    const point = await getLocation();
+    if (point) {
+      setOriginPoint(point);
+      setOriginLabel('your current location');
+    }
+  };
 
   if (!room) {
     return (
@@ -60,14 +95,20 @@ export default function RoomDetailScreen() {
     .filter(Boolean)
     .join(' · ');
 
-  const distance =
-    room.distanceFromLabel != null
+  const routeDistance =
+    originPoint && property?.mapLocationSet
+      ? distanceBetweenKm(
+          originPoint,
+          { latitude: property.latitude, longitude: property.longitude },
+        )
+      : null;
+  const distance = routeDistance !== null
+    ? `${formatDistanceKm(routeDistance)} · about ${formatTravelDuration(
+        estimateTravelMinutes(routeDistance, 'vehicle'),
+      )} by vehicle from ${originLabel}`
+    : room.distanceFromLabel != null
       ? `${room.distanceKm} km from ${room.distanceFromLabel}`
       : `${room.distanceKm} km away`;
-
-  const property = properties.find(
-    (item) => item.id === room.propertyId,
-  );
 
   const landlordRoom = property?.rooms.find(
     (item) => item.id === room.landlordRoomId,
@@ -219,7 +260,7 @@ export default function RoomDetailScreen() {
 
       {room.amenities?.length ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What's included</Text>
+          <Text style={styles.sectionTitle}>What&apos;s included</Text>
 
           {room.amenities.map((amenity) => (
             <View key={amenity} style={styles.amenityRow}>
@@ -243,6 +284,25 @@ export default function RoomDetailScreen() {
           />
           <Text style={styles.metaText}>{distance}</Text>
         </View>
+        <Pressable
+          onPress={() => void handleUseCurrentLocation()}
+          disabled={locating}
+          accessibilityRole="button"
+          accessibilityLabel="Calculate distance from my current location"
+          style={({ pressed }) => [
+            styles.requestButton,
+            pressed && !locating ? styles.requestButtonPressed : null,
+            locating ? styles.requestButtonDisabled : null,
+          ]}
+        >
+          <Ionicons name="locate-outline" size={16} color={colors.primary} />
+          <Text style={styles.requestButtonLabel}>
+            {locating ? 'Getting your location...' : 'Use my current location'}
+          </Text>
+        </Pressable>
+        {locationError ? (
+          <Text style={styles.submitError}>{locationError}</Text>
+        ) : null}
 
         <View style={styles.metaRow}>
           <Ionicons
@@ -288,7 +348,7 @@ export default function RoomDetailScreen() {
             <StatusBadge text="Pending" variant="info" dot />
 
             <Text style={styles.statusText}>
-              Your request is awaiting the landlord's review.
+              Your request is awaiting the landlord&apos;s review.
             </Text>
 
             <PrimaryButton
